@@ -4,6 +4,27 @@
   
     
     <entry>
+      <title>神经网络基础模型学习资源</title>
+      <link href="/2022/12/08/%E8%B5%84%E6%BA%90%E5%88%97%E8%A1%A8/"/>
+      <url>/2022/12/08/%E8%B5%84%E6%BA%90%E5%88%97%E8%A1%A8/</url>
+      
+        <content type="html"><![CDATA[<h1 id="神经网络基础模型学习资源"><a href="#神经网络基础模型学习资源" class="headerlink" title="神经网络基础模型学习资源"></a>神经网络基础模型学习资源</h1><h2 id="视频课"><a href="#视频课" class="headerlink" title="视频课"></a>视频课</h2><ul><li><p><a href="https://space.bilibili.com/18161609/"><strong>霹雳吧啦Wz基础教程</strong></a></p></li><li><p><a href="https://space.bilibili.com/21241234"><strong>刘二大人</strong></a></p></li></ul><h2 id="博客笔记"><a href="#博客笔记" class="headerlink" title="博客笔记"></a>博客笔记</h2><ul><li><p><a href="https://blog.csdn.net/m0_37867091?type=blog"><strong>CSDN神经网络</strong></a></p></li><li><p><a href="https://redstonewill.com/category/ai-notes/"><strong>红色石头</strong></a></p></li><li><p><a href="http://www.ai-start.com/"><strong>吴恩达笔记</strong></a></p></li></ul>]]></content>
+      
+      
+      
+        <tags>
+            
+            <tag> 人工智能 </tag>
+            
+            <tag> 学习资源 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>LeNet-1</title>
       <link href="/2022/12/08/CNN%E5%9F%BA%E7%A1%80/"/>
       <url>/2022/12/08/CNN%E5%9F%BA%E7%A1%80/</url>
@@ -15,6 +36,8 @@
         <tags>
             
             <tag> 人工智能 </tag>
+            
+            <tag> LeNet </tag>
             
         </tags>
       
