@@ -1,9 +1,9 @@
-/* 页脚与头图透明 */
+/* 页脚与头图半透明 */
 #footer {
-  background: rgba(102,204,255,0.9);
+  background: rgba(102,204,255,0.9) !important;
 }
 #page-header {
-  background: rgba(102,204,255,0.9);
+  background: rgba(102,204,255,0.9) !important;
 }
 
 /* 白天模式遮罩透明 */
