@@ -4,12 +4,45 @@
   
     
     <entry>
+      <title>贪吃蛇大作战分析</title>
+      <link href="/2022/12/10/%E8%B4%AA%E5%90%83%E8%9B%87%E5%A4%A7%E4%BD%9C%E6%88%98%E5%88%86%E6%9E%90/"/>
+      <url>/2022/12/10/%E8%B4%AA%E5%90%83%E8%9B%87%E5%A4%A7%E4%BD%9C%E6%88%98%E5%88%86%E6%9E%90/</url>
+      
+        <content type="html"><![CDATA[<h1 id="与对象玩游戏的思考-1"><a href="#与对象玩游戏的思考-1" class="headerlink" title="与对象玩游戏的思考-1"></a>与对象玩游戏的思考-1</h1><img src="https://s2.loli.net/2022/12/10/UxC3Bh7DOsmAtMK.png" alt="贪吃蛇大作战LOGO" style="zoom:33%;" /><p>贪吃蛇大作战是一款对象爱玩的游戏，我也经常陪她一起玩，一开始觉得这个游戏些许幼稚，但一段时间发先此游戏确实有些独特之处，我仅站在我的角度对此款游戏进行分析。</p><h2 id="游戏操作"><a href="#游戏操作" class="headerlink" title="游戏操作"></a>游戏操作</h2><p>作为一款IO型游戏（.io域名网页移植型游戏）它必定轻量化且易上手。左侧摇杆进行方向控制，右侧控制加速按钮和道具&#x2F;技能按钮。玩家通过操控贪吃蛇食取地图上的粒子和大粒子以及道具，延长自身长度。通过灵活操作让别的贪吃蛇撞到自身身体部分达成击杀。对象作为一个讨厌复杂操作的游戏玩家很容易掌握，其上手门槛极低，老少咸宜。</p><h2 id="游戏模式"><a href="#游戏模式" class="headerlink" title="游戏模式"></a>游戏模式</h2><p>实际上分为两类：</p><ul><li>人机模式（无尽模式及其衍生）</li><li>PvP模式（团战模式，击杀模式）</li></ul><p>前者对应了需要打发时间的休闲玩家，后者对应了有对战需求的竞技玩家。其各个模式都含有玩家的排行榜，鼓励玩家游玩。</p><h2 id="运营思路"><a href="#运营思路" class="headerlink" title="运营思路"></a>运营思路</h2><p>作为一款运营6年的游戏，微派网络的运营显然是成功的。但于此同时，观察微派网络官方的产品介绍，微派至今未能拿出较为重量的游戏产品…</p><p>贪吃蛇的运营思路：广告＋效果付费+礼物</p><p>对于免费玩家，通过看广告奖励游戏道具创收。对于付费玩家，通过游戏皮肤，击杀效果等场上道具，以及社群属性的赠送礼物，以及诸多例如show值，魅力值等系统排行展示，诱导消费。</p><h2 id="游戏弊端"><a href="#游戏弊端" class="headerlink" title="游戏弊端"></a>游戏弊端</h2><p>游戏的弊端大多存在于PvP模式下。</p><ul><li><p>网络平衡和链接稳定性差：网络稳定性是作为IO游戏能愉快游玩的关键因素，在不同网络条件下，同一局能一起愉快游玩必须做好网络平衡，否则对部分玩家，体验极差。然而贪吃蛇大作战的解决方案既不是增加链接更近的服务器，降低网络延迟。也不是交出满意的游戏网络平衡方案。而是通过减少网络质量差玩家的加速按钮使用来控制。不止到读者是否遇到加速按钮按不动没有效果的情况，极其影响竞技体验。（补充：同样的网络环境跑腾讯系游戏40ms EA平台94ms 但在贪吃蛇游戏中要么140+ 要么就是绿色信号的但卡按钮）</p></li><li><p>游戏皮肤平衡未完善；游戏皮肤不应该成为影响竞技体验的要素，但经过较长时间的游玩发现，不同皮肤的头部碰撞箱判定是不同的，导致对无皮肤玩家的不公平。</p></li><li><p>游戏判定问题：完全正碰无法计算。随机给一方？</p></li><li><p>游戏机型优化：苹果系设备在promotion高刷支持下游戏对局流畅度明显高于安卓机型，此外在PvP模式下此类特殊优化体验甚至高于网络优化令人唏嘘。</p></li></ul>]]></content>
+      
+      
+      <categories>
+          
+          <category> 杂谈 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 贪吃蛇大作战 </tag>
+            
+            <tag> 游戏分析 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>神经网络基础模型学习资源</title>
       <link href="/2022/12/08/%E8%B5%84%E6%BA%90%E5%88%97%E8%A1%A8/"/>
       <url>/2022/12/08/%E8%B5%84%E6%BA%90%E5%88%97%E8%A1%A8/</url>
       
         <content type="html"><![CDATA[<h1 id="神经网络基础模型学习资源"><a href="#神经网络基础模型学习资源" class="headerlink" title="神经网络基础模型学习资源"></a>神经网络基础模型学习资源</h1><h2 id="视频课"><a href="#视频课" class="headerlink" title="视频课"></a>视频课</h2><ul><li><p><a href="https://space.bilibili.com/18161609/"><strong>霹雳吧啦Wz基础教程</strong></a></p></li><li><p><a href="https://space.bilibili.com/21241234"><strong>刘二大人</strong></a></p></li></ul><h2 id="博客笔记"><a href="#博客笔记" class="headerlink" title="博客笔记"></a>博客笔记</h2><ul><li><p><a href="https://blog.csdn.net/m0_37867091?type=blog"><strong>CSDN神经网络</strong></a></p></li><li><p><a href="https://redstonewill.com/category/ai-notes/"><strong>红色石头</strong></a></p></li><li><p><a href="http://www.ai-start.com/"><strong>吴恩达笔记</strong></a></p></li></ul>]]></content>
       
+      
+      <categories>
+          
+          <category> 学习 </category>
+          
+      </categories>
       
       
         <tags>
@@ -31,6 +64,12 @@
       
         <content type="html"><![CDATA[<h1 id="CNN基础"><a href="#CNN基础" class="headerlink" title="CNN基础"></a>CNN基础</h1><h2 id="计算机视觉"><a href="#计算机视觉" class="headerlink" title="计算机视觉"></a>计算机视觉</h2><ol><li><p><strong>图像分类（Image Classification）</strong></p></li><li><p><strong>目标识别（Object detection）</strong></p></li><li><p><strong>神经风格转换（Neural Style Transfer）</strong></p></li></ol><p><strong>使用传统神经网络处理机器视觉的一个主要问题是输入层维度很大</strong>。如果图片尺寸较大，例如一张1000x1000x3的图片，神经网络输入层的维度将达到3百万，使得<strong>网络权重W非常庞大</strong>。这样会造成两个后果，一是神经网络结构复杂，数据量相对不够，容易出现过拟合；二是所需内存、计算量较大。<strong>解决这一问题的方法就是使用卷积神经网络（CNN）。</strong></p><p><strong>CNN做的事情其实是，来简化这个neural network的架构，我们根据自己的知识和对图像处理的理解，一开始就把某些实际上用不到的参数给过滤掉</strong>，我们一开始就想一些办法，不要用fully connected network，而是用比较少的参数，来做图像处理这件事情，所以CNN其实是比一般的DNN还要更简单的。</p><hr><h2 id="卷积操作：以边缘检测举例"><a href="#卷积操作：以边缘检测举例" class="headerlink" title="卷积操作：以边缘检测举例"></a>卷积操作：以边缘检测举例</h2><p>（Edge Detection）</p><p>图片边缘检测的方式</p><ol><li>垂直边缘检测（Vertical edges）</li><li>水平边缘检测（Horizontal edges）</li></ol><p><img src="https://s2.loli.net/2022/12/07/ADTrBFMpjeycq4l.png"></p><p>边缘检测通过相应的滤波器（卷积核）卷积实现。</p><h3 id="【示例】垂直检测"><a href="#【示例】垂直检测" class="headerlink" title="【示例】垂直检测"></a>【示例】垂直检测</h3><p><img src="http://www.ai-start.com/dl2017/images/9aa008335e8a229d3818a61aaccc7173.png" alt="垂直检测1"></p><p><img src="https://img-blog.csdnimg.cn/2020042210323963.png#pic_center" alt="垂直检测2"></p><p>图片的边缘检测可以通过与相应滤波器进行卷积来实现。以垂直边缘检测为例，原始图片尺寸为6×6，滤波器filter尺寸为3×3，卷积后的图片尺寸为4×4</p><p>其中 *****代表卷积 上图只显示了卷积后的第一个值和最后一个值，其余值可自行计算。</p><p>##边缘检测补充</p><p>图像边缘有两种渐变方式，一种是由明变暗，另一种是由暗变明。以垂直边缘检测为例，下图展示了两种方式的区别。实际应用中，这两种渐变方式并不影响边缘检测结果，可以对输出图像取绝对值操作，得到同样的结果。</p><p><img src="https://img-blog.csdnimg.cn/20200422104421714.png#pic_center" alt="在这里插入图片描述"><br>下图展示一个水平边缘检测的例子：</p><p><img src="https://img-blog.csdnimg.cn/20200422104724389.png#pic_center" alt="在这里插入图片描述"></p><p>垂直边缘检测和水平边缘检测的滤波器<a href="https://so.csdn.net/so/search?q=%E7%AE%97%E5%AD%90&spm=1001.2101.3001.7020">算子</a>如下所示：</p><p><img src="https://img-blog.csdnimg.cn/20200422104617695.png#pic_center" alt="在这里插入图片描述"><br>除了上面提到的这种简单的Vertical、Horizontal滤波器之外，还有其它常用的filters，例如Sobel filter和Scharr filter。这两种滤波器的特点是增加图片中心区域的权重。（下图展示的是垂直边缘检测算子，水平边缘检测算子只需将上图顺时针翻转90度即可。）</p><p><img src="https://img-blog.csdnimg.cn/20200422105237527.png#pic_center" alt="在这里插入图片描述"><br>在深度学习中，如果我们想检测图像的各种边缘特征，而不仅限于垂直边缘和水平边缘，那么 filter 的数值一般需要通过模型训练得到，类似于标准神经网络中的权重 w ww 一样由反向传播算法迭代求得。CNN的主要目的就是计算出这些 filter 的数值。确定得到了这些 filter 后，CNN浅层网络也就实现了对图片所有边缘特征的检测。<br><img src="https://img-blog.csdnimg.cn/2020042210550658.png#pic_center" alt="在这里插入图片描述"></p><h2 id="Padding"><a href="#Padding" class="headerlink" title="Padding"></a>Padding</h2><p>按照我们上面讲的图片卷积，如果原始图片尺寸为 n × n，filter尺寸为 f × f，则卷积后的图片尺寸为 ( n − f + 1 ) × ( n − f + 1 ) ，注意 f 一般为奇数。这样会带来两个问题：</p><ol><li>卷积运算后，输出图片尺寸缩小</li><li>原始图片边缘信息对输出贡献得少，输出图片丢失边缘信息</li></ol><p>为了解决图片缩小的问题，可以 <strong>使用padding方法，即把原始图片尺寸进行扩展，扩展区域补零</strong>，用 p pp 来表示每个方向扩展的宽度。<br><img src="https://img-blog.csdnimg.cn/20200422110159369.png#pic_center" alt="在这里插入图片描述"><br>经过padding之后:</p><table><thead><tr><th>原始图像padding后尺寸</th><th>filter尺寸</th><th>卷积后的图像尺寸</th></tr></thead><tbody><tr><td>( n + 2 p ) × ( n + 2 p )</td><td>f × f</td><td>( n + 2 p − f + 1 ) × ( n + 2 p − f + 1 )</td></tr></tbody></table><p>稍作总结：</p><ul><li>无padding操作，p &#x3D; 0，我们称之为 <strong>Valid convolutions</strong> （不填充）</li><li>有padding操作，$\ p&#x3D;\frac{f-1}{2}$我们称之为 <strong>Same convolutions</strong> （填充，输入输出大小相等）</li></ul><hr><h2 id="卷积步长"><a href="#卷积步长" class="headerlink" title="卷积步长"></a>卷积步长</h2><p><img src="https://img-blog.csdnimg.cn/20200422111528803.png#pic_center" alt="卷积步长"></p><p>我们用s 表示stride长度，p 表示padding长度，如果原始图片尺寸为 n × n，filter（卷积核）尺寸为 f × f ，则卷积后的图片尺寸为：</p><p><img src="https://s2.loli.net/2022/12/07/HwfI68tMDunColL.png"></p><p>注：商不是整数的情况下，向下取整</p><h4 id="数学上卷积与人工智能卷积的区别："><a href="#数学上卷积与人工智能卷积的区别：" class="headerlink" title="数学上卷积与人工智能卷积的区别："></a>数学上卷积与人工智能卷积的区别：</h4><ul><li>数学意义上的卷积（<strong>convolutions</strong>））运算会先将filter绕其中心旋转180度，然后再将旋转后的filter在原始图片上进行滑动计算。filter旋转如下所示：<br><img src="https://img-blog.csdnimg.cn/20200422112729414.png#pic_center" alt="在这里插入图片描述"></li><li>人工智能意义上卷积：相关系数（<strong>cross-correlations</strong>）的计算过程则不会对filter进行旋转，而是直接在原始图片上进行滑动计算。</li></ul><p><strong>总的来说，忽略旋转运算可以大大提高CNN网络运算速度，而且不影响模型性能。</strong></p><p>注：卷积运算服从结合率不服从交换律</p><hr><h2 id="三维卷积"><a href="#三维卷积" class="headerlink" title="三维卷积"></a>三维卷积</h2><p>同二维卷积多了一个维度</p><ul><li><p>卷积核 channel（深度&#x2F;通道数）与输入特征层 的channel 相同</p></li><li><p>输出的特征矩阵channel与卷积核个数相同</p></li></ul><p>（Convolutions over volumes）</p><p>对于3通道的RGB图像，其对应的滤波器算子同样也是3通道的。例如一个图像是6 x 6 x 3，分别表示图像的高度（height）、宽度（weight）和通道（channel）。</p><p>3通道图像的卷积运算与单通道图像的卷积运算基本一致。过程是将每个单通道（R，G，B）与对应的filter进行卷积运算求和，然后再<strong>将3通道的和相加</strong>，得到输出图像的<strong>一个</strong>像素值。</p><p><img src="https://img-blog.csdnimg.cn/20200422113610810.png#pic_center" alt="在这里插入图片描述"><br>不同通道的滤波算子可以不相同。例如R通道filter实现垂直边缘检测，G和B通道不进行边缘检测，全部置零，或者将R，G，B三通道filter全部设置为水平边缘检测。</p><p>为了实现更多边缘检测，可以增加更多的滤波器组，进行多个卷积运算。例如设置第一个滤波器组实现垂直边缘检测，第二个滤波器组实现水平边缘检测。这样，不同滤波器组卷积得到不同的输出，个数由滤波器组决定。</p><p><img src="https://img-blog.csdnimg.cn/20200422113807669.png#pic_center" alt="在这里插入图片描述"></p><p><img src="https://s2.loli.net/2022/12/07/sBoEdSWhqKINkc4.png"></p><h2 id="单层卷积网络"><a href="#单层卷积网络" class="headerlink" title="单层卷积网络"></a>单层卷积网络</h2><p>卷积神经网络的单层结构如下所示：<br><img src="https://img-blog.csdnimg.cn/20200422151012841.png#pic_center" alt="卷积神经网络的单层结构如下所示："></p><p><img src="https://s2.loli.net/2022/12/07/BkVoKx69ZDuY8PF.png"></p><p>总结</p><p><img src="https://s2.loli.net/2022/12/07/tXxq1EfkgDBvYeT.png"></p>]]></content>
       
+      
+      <categories>
+          
+          <category> 学习 </category>
+          
+      </categories>
       
       
         <tags>
