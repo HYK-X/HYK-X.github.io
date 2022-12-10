@@ -4,6 +4,35 @@
   
     
     <entry>
+      <title>Pytorch的安装指南</title>
+      <link href="/2022/12/10/How%20to%20install%20Pytorch/"/>
+      <url>/2022/12/10/How%20to%20install%20Pytorch/</url>
+      
+        <content type="html"><![CDATA[<h1 id="Pytorch的安装指南"><a href="#Pytorch的安装指南" class="headerlink" title="Pytorch的安装指南"></a>Pytorch的安装指南</h1><h2 id="视频教程"><a href="#视频教程" class="headerlink" title="视频教程"></a>视频教程</h2><p><a href="https://www.bilibili.com/video/BV1ov41137Z8">环境配置</a></p><p>PS：嫌麻烦anaconda在base环境就行，不需要再建立一个新环境，以防萌新环境混乱。</p><h2 id="一堆官网"><a href="#一堆官网" class="headerlink" title="一堆官网"></a>一堆官网</h2><p>CUDA：<a href="https://developer.nvidia.com/zh-cn/cuda-toolkit">https://developer.nvidia.com/zh-cn/cuda-toolkit</a></p><p>Cudnn：<a href="https://developer.nvidia.com/rdp/cudnn-archive">https://developer.nvidia.com/rdp/cudnn-archive</a></p><p>Pytorch：<a href="https://pytorch.org/">https://pytorch.org/</a></p><h3 id="个人版本："><a href="#个人版本：" class="headerlink" title="个人版本："></a>个人版本：</h3><p>CUDA：</p><figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https://developer.nvidia.com/cuda-11-7-1-download-archive</span><br></pre></td></tr></table></figure><p>Cudnn：</p><figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https://developer.nvidia.com/compute/cudnn/secure/8.6.0/local_installers/11.8/cudnn-windows-x86_64-8.6.0.163_cuda11-archive.zip</span><br></pre></td></tr></table></figure><p>Pytorch：</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">conda install pytorch torchvision torchaudio pytorch-cuda=<span class="number">11.7</span> -c pytorch -c nvidia</span><br></pre></td></tr></table></figure><p>前两个下载后一个在base环境安装</p><h2 id="一点提示"><a href="#一点提示" class="headerlink" title="一点提示"></a>一点提示</h2><h3 id="在pycharm中terminal直接启用anaconda-base环境的方法"><a href="#在pycharm中terminal直接启用anaconda-base环境的方法" class="headerlink" title="在pycharm中terminal直接启用anaconda-base环境的方法"></a>在pycharm中terminal直接启用anaconda-base环境的方法</h3><ol><li><p>找到该文件右击属性<img src="https://s2.loli.net/2022/12/10/4pC58E2IL9xqHwU.png" style="zoom:80%;" /></p></li><li><p>复制目标路径“cmd”开始所有内容</p><img src="https://s2.loli.net/2022/12/10/21sHhJmaxO9b3CS.png" style="zoom: 80%;" /></li><li><p>settings-tools-terminal-Shell path粘贴你复制的内容 点击OK 重启pycharm<img src="https://s2.loli.net/2022/12/10/m3EGIKWzU59AMb7.png"></p><h3 id="Anaconda中conda更新"><a href="#Anaconda中conda更新" class="headerlink" title="Anaconda中conda更新"></a>Anaconda中conda更新</h3><p>我们用<code>conda install xxx</code>来安装包时，经常会遇到如下问题：</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">failed <span class="keyword">with</span> initial frozen solve. Retrying <span class="keyword">with</span> flexible solve.</span><br><span class="line">Solving environment: failed <span class="keyword">with</span> repodata <span class="keyword">from</span> current_repodata.json, will retry <span class="keyword">with</span> <span class="built_in">next</span> repodata source.</span><br><span class="line"><span class="number">12</span></span><br></pre></td></tr></table></figure><p>这其实是conda的环境不适配，我们需要将对环境进行更新，通过如下几个步骤：</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看版本</span></span><br><span class="line">conda -V</span><br><span class="line"><span class="comment"># 更新conda环境</span></span><br><span class="line">conda update -n base conda</span><br><span class="line"><span class="comment"># 更新conda的所有包</span></span><br><span class="line">conda update --<span class="built_in">all</span></span><br><span class="line"><span class="number">123456</span></span><br></pre></td></tr></table></figure><p>做完这些之后，再用<code>conda install xxx</code>就不会有上面的问题了。</p></li></ol>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 人工智能 </tag>
+            
+            <tag> 学习资源 </tag>
+            
+            <tag> 安装指南 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>LeNet-2</title>
       <link href="/2022/12/10/Pytorch_Demo/"/>
       <url>/2022/12/10/Pytorch_Demo/</url>
