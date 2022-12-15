@@ -1,0 +1,260 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>LeNet-3 | Study-HYK</title><meta name="author" content="HYK"><meta name="copyright" content="HYK"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="ffffff"><meta name="description" content="Lenet研读论文原文下载 《Gradient-Based Learning Applied to Document Recognition》   论文研读以及理解使用梯度下降算法的多层网络能够从大量样本中学习到复杂、高维、非线性的映射关系，这使得它们能够用于图像识别任务。在传统的模式识别模型中，手工设计的特征提取器用于从输入数据中提取相关信息并且消除不相关的变量。然后用一个可训练的分类器将结果特">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LeNet-3">
+<meta property="og:url" content="https://learn.hykpromax.top/2022/12/12/%E8%AE%BA%E6%96%87%E7%A0%94%E8%AF%BB/index.html">
+<meta property="og:site_name" content="Study-HYK">
+<meta property="og:description" content="Lenet研读论文原文下载 《Gradient-Based Learning Applied to Document Recognition》   论文研读以及理解使用梯度下降算法的多层网络能够从大量样本中学习到复杂、高维、非线性的映射关系，这使得它们能够用于图像识别任务。在传统的模式识别模型中，手工设计的特征提取器用于从输入数据中提取相关信息并且消除不相关的变量。然后用一个可训练的分类器将结果特">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://s2.loli.net/2022/12/08/oU7naqtXDwd23Y6.webp">
+<meta property="article:published_time" content="2022-12-12T12:19:47.000Z">
+<meta property="article:modified_time" content="2022-12-15T14:59:18.027Z">
+<meta property="article:author" content="HYK">
+<meta property="article:tag" content="人工智能">
+<meta property="article:tag" content="LeNet">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://s2.loli.net/2022/12/08/oU7naqtXDwd23Y6.webp"><link rel="shortcut icon" href="https://s2.loli.net/2022/12/08/SkKbjJ7g9uHvtXh.png"><link rel="canonical" href="https://learn.hykpromax.top/2022/12/12/%E8%AE%BA%E6%96%87%E7%A0%94%E8%AF%BB/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":true,"languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"简"},
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":230},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: true,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#1f1f1f","position":"top-right"},
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: true,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'LeNet-3',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-12-15 22:59:18'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          const now = new Date()
+          const hour = now.getHours()
+          const isNight = hour <= 6 || hour >= 18
+          if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+          else if (t === 'light') activateLightMode()
+          else activateDarkMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/custom.css" media="defer" onload="this.media='all'"><!-- hexo injector head_end start --><link rel="stylesheet" href="/css/runtime.css" media="print" onload="this.media='all'"><!-- hexo injector head_end end --><meta name="generator" content="Hexo 6.3.0"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">6</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 列表</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/comic/"><i class="fa-fw fas fa-video"></i><span> 番剧</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://s2.loli.net/2022/12/08/oU7naqtXDwd23Y6.webp')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Study-HYK</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 列表</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/comic/"><i class="fa-fw fas fa-video"></i><span> 番剧</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">LeNet-3</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-12-12T12:19:47.000Z" title="发表于 2022-12-12 20:19:47">2022-12-12</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-12-15T14:59:18.027Z" title="更新于 2022-12-15 22:59:18">2022-12-15</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%AD%A6%E4%B9%A0/">学习</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">4.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>15分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="LeNet-3"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="Lenet研读"><a href="#Lenet研读" class="headerlink" title="Lenet研读"></a>Lenet研读</h1><p>论文原文下载 <a href="https://link.zhihu.com/?target=http://lushuangning.oss-cn-beijing.aliyuncs.com/CNN%25E5%25AD%25A6%25E4%25B9%25A0%25E7%25B3%25BB%25E5%2588%2597/Gradient-Based_Learning_Applied_to_Document_Recognition.pdf">《Gradient-Based Learning Applied to Document Recognition》</a></p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/z9TWXaBcl6ewj2p.png"></p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/4oq52dXg8zbmFlI.png"></p>
+<h2 id="论文研读以及理解"><a href="#论文研读以及理解" class="headerlink" title="论文研读以及理解"></a>论文研读以及理解</h2><p>使用梯度下降算法的多层网络能够从大量样本中学习到复杂、高维、非线性的映射关系，这使得它们能够用于图像识别任务。在传统的模式识别模型中，手工设计的特征提取器用于从输入数据中提取相关信息并且消除不相关的变量。然后用一个可训练的分类器将结果特征向量分类成对应类别。在该方案中，一个标准的、全连接的多层网络用于当作分类器。一个更有意思的模式是特征提取器能够进行自我学习。在该字符识别任务中，<strong>原始输入的图像即可用于特征提取及分类（标准大小的图像）。虽然可以通过普通的全连接前馈网络成功完成字符识别等任务，但在部分方面仍存在问题。</strong></p>
+<p>第一，<strong>图像比较大</strong>，通常包含几百个像素(pixels)。第一层包含上百个隐藏神经元的全连接层，会包含成千上万的权重。如此大量的参数提高了系统的识别能力，但也导致了需要大量的训练集。并且，存储如此大量的权重超出了当前的硬件承载能力。但是，对于图像或者语音应用而言，缺乏结构性的网络最大不足在于不具备平移、形变扭曲的不变性。在输入到固定大小的网络之前，字符图像或者其他的2D、1D信号必须经过大小的标准化和数据的归一化。不幸的是，没有一种预处理是完美的：手写数字一般在字符层面进行规范化，会导致每个字符的大小，倾斜，位置发生形变，外加上书写风格的差异，会导致输入对象中特征位置的显著变化。原则上，足够大小的全连接网络能够对这些变化具有鲁棒性。可是，这样的任务训练会导致多个具有相似权重模式的神经元位于输入的不同位置，便于检测输入中出现的任何不同特征。需要大量的训练样例来学习这些权重设置从而能够覆盖可能的变量空间。在下文所讨论的卷积网络中，平移不变性能够通过跨空间的权重复制（即权重共享）自动实现。</p>
+<p>第二，<strong>全连接架构的一个不足在于输入的拓扑结构被完全忽略。</strong>输入变量可以以任何（固定）顺序呈现，而不会影响训练结果。与之相对的是，图像（或者语音的时间序列表示）具有健壮的2D局部结构：空间相邻的像素具有高度相关性。局部相关性对于提取局部特征来说具有巨大优势，因为相邻像素的权重可以分类为几类（比如：边，角等）。卷积神经网络通过限制感受野的隐藏神经元为局部大小从而强制提取局部特征。</p>
+<h3 id="Convolutional-Networks-卷积网络"><a href="#Convolutional-Networks-卷积网络" class="headerlink" title="Convolutional Networks 卷积网络"></a><strong>Convolutional Networks 卷积网络</strong></h3><p>卷积网络通过三种架构思想（<strong>局部感受野(local receptive fields)<strong>、</strong>权重共享(shared weights)<strong>、下采样(sub-sampling)）来保证平移、尺度、和形变的不变性。图2中所展示的LeNet-5就是典型的用于字符识别的卷积网络。原始的字符输入图像是经过大小规范化和数据归一化的。局部感受野的连接神经元的理念可追溯到60年代早期的感知机理论，并且几乎与Hubel和Wiesel在猫的视觉系统中发现局部敏感、定向选择性神经元同时发生。局部连接在视觉学习的神经元模型中广泛使用。通过局部感受野，神经元能够提取初级的视觉特征，比如边缘、定点、角点（或者像语音频谱图相似的其他信号特征）。这些特征在接下来的层中能够用于提取高级特征。正如之前所言，输入的平移或者形变会导致特征位置的显著变化。此外，图像的局部特征检测器还可作用于整张图像。这种技术实现可通过强制整张图像不同地方的局部感受野拥有相同的权重向量（即权值共享）。通过这些神经元进行特征提取的输出结果称为特征图（feature map）。特征图的每一神经元都是通过前一层不同位置经过相同计算得来的。一个完整的卷积层是通过几个特征图联合组成的（通过不同的权重向量），因此可以在每个局部位置形成多重特征。图2中展现一个LeNet输入的完整的样本。首层拥有6张由隐藏神经元提取的特征图。特征图的每个神经元计算来自输入中5x5大小总共25个输入计算，这称之为神经元的感受野。每个神经元</strong>通过25个输入乘以25个可训练变量加上一个偏置</strong>得来。特征图中的连续单元的感受野以前一层中相应的连续单元为中心，所以相邻单元的感受野是重叠的。举个例子，在LeNet-5中的首个隐藏层，水平连续单元的感受野重叠5行4列。正如之前所提，特征图中的每个神经元共享相同的25个权重和一个偏置，从而使得输入图像的所有相似的局部特征。在同一层中的其他特征图使用不同的权重和偏置集合，因此能够提取不同类型的局部特征。在LeNet-5中，每一个输入位置，6张特征图都由同一位置的6种神经元组合进行提取。<strong>特征图的一系列实现通过感受野大小扫描输入图片的每一个位置，然后将结果保存在特征图的相同位置。这种操作等同于卷积，外接一个额外的偏置和压缩方法，因此命名为卷积网络(convolutional network)。</strong>卷积核是特征图中神经元所使用的权重结合。卷积层的一个有趣的特征是如果输入图像发生平移，特征图也会发生同样的平移，否则特征图图保持不变。这个特性是CNN对位移和形变保持鲁棒的基础。</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/kJN2YufDiH8mnPG.png"></p>
+<p>一旦一个特征被提取，它的其他局部就变得不重要了。相对于其他特征的相关位置才是更相关的。举个例子，我们知道左上角区域输入图像包含一个水平线段的端点，右上角区域包括一个角点，下方垂直区域包含一个端点，我们就能得出输入图像为7。这些特征位置的精确对识别没什么帮助，反而不利于不同字符的识别。在特征图中降低精确位置信息的简单方式是通过<strong>降低空间分辨率(spatial resolution)。</strong>这可通过<strong>下采样层(sub-sampling layers)<strong>来达到目标。</strong>下采样层通过局部平均来降低特征图的分辨率</strong>，并且降低输出对平移、形变的敏感度。LeNet-5的第二个隐藏层即为下采样层。这层包含6张特征图，每一张特征图都对应前一层的每张特征图。每个神经元的感受野大小为2x2，每个神经元通过4个输入取平均，然后<strong>乘以一个可训练的参数外加一个偏置</strong>，最后通过一个<strong>sigmoid函数进行激活</strong>。连续单元具有不重叠的感受野。最后，经过<strong>下采样的特征图含有前一层特征图的一半大小的行和列</strong>。一个可训练的参数和偏置影响着最后的sigmoid非线性。如果系数过小，下采样层神经元相当于对输入做了模糊处理，相当于线性。如果系数较大，根据偏置的值下采样层可看成是“或”或者“与”操作。卷积层和下采样层的交替衔接，就形成了一种“金字塔”架构：在每一层，特征图的分辨率逐渐降低，而数量逐渐增加。在图2中的第三层隐藏层的每个神经元的计算来自于上一层的多个特征图的相关神经元计算。卷积和下采样结合的灵感来源于Hubel和Wiesel的“简单”和“复杂”细胞概念，虽然那个时候没有像反向传播算法一样的全局监督学习过程。下采样层结合多个特征图的丰富表达可以<strong>大大提高网络对几何变换的不变性</strong>。</p>
+<p>自从所有权重可通过反向传播算法学习以后，卷积网络能够被视为可自我学习的特征提取器。权重共享的技术能够大大减少参数的使用量，并且该技术降低了机器的“能力”，同时该技术还减小了测试误差和训练误差之间的差距。图2中的网络包含340908个连接，但通过权值共享后，只需要60000个可训练参数。</p>
+<p>固定大小的卷积网络已经适用于各种应用，包括手写识别任务、机打字符识别、在线手写识别以及人脸识别等。**在单个时间维度进行权值共享的固定大小的卷积网络称之为延时神经网络(TDNNs)**，TDNNs已经用于场景识别（没有下采样），语音字符识别（有下采样），独立的手写体字符识别以及手势验证。</p>
+<h3 id="LeNet-5"><a href="#LeNet-5" class="headerlink" title="LeNet-5"></a><strong>LeNet-5</strong></h3><p>LeNet-5模型主要是针对灰度设计的，由Yann LeCun教授于1998年提出来的，它是第一个成功应用于数字识别问题的卷积神经网络。在MNIST数据中，它的准确率达到大约99.2%。典型的LeNet-5结构包含CONV layer，POOL layer和FC layer，顺序一般是 <strong>CONV layer-&gt;POOL layer-&gt;CONV layer-&gt;POOL layer-&gt;FC layer-&gt;FC layer-&gt;OUTPUT layer</strong>，即 y ^ \hat{y}y^​。下图所示的是一个数字识别的LeNet-5的模型结构：<br><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/HBzFcgRyKNUVI7Y.png"></p>
+<p>该LeNet模型总共包含了大约6万个参数。值得一提的是，当时Yann LeCun提出的LeNet-5模型池化层使用的是average pool，而且各层激活函数一般是Sigmoid和tanh。现在，我们可以根据需要，做出改进，使用max pool和激活函数ReLU。</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/rlFvBmdcMtqzIVn.png"></p>
+<p>这个网络虽然很小，但是它包含了<a target="_blank" rel="noopener" href="http://cuijiahua.com/blog/tag/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/">深度学习</a>的基本模块：卷积层，池化层，<a target="_blank" rel="noopener" href="https://so.csdn.net/so/search?q=%E5%85%A8%E8%BF%9E%E6%8E%A5%E5%B1%82&spm=1001.2101.3001.7020">全连接层</a>。是其他深度学习模型的基础， 这里我们对LeNet-5进行深入分析。同时，通过实例分析，加深对与卷积层和池化层的理解。</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/fzksIaO4Vv2Dm75.png"></p>
+<p>​    LeNet-5共<strong>有7层</strong>，不包含输入，每层都包含可训练参数；每个层有<strong>多个Feature Map</strong>，每个FeatureMap通过一种卷积滤波器提取输入的一种特征，然后每个FeatureMap有<strong>多个神经元。</strong></p>
+<p><strong>各层参数详解：</strong></p>
+<h4 id="1、INPUT层-输入层"><a href="#1、INPUT层-输入层" class="headerlink" title="1、INPUT层-输入层"></a>1、INPUT层-输入层</h4><p>​    首先是数据 INPUT 层，输入图像的尺寸统一归一化为32*32。</p>
+<p>​    <strong>注意：本层不算LeNet-5的网络结构，传统上，不将输入层视为网络层次结构之一。</strong></p>
+<h4 id="2、C1层-卷积层"><a href="#2、C1层-卷积层" class="headerlink" title="2、C1层-卷积层"></a>2、C1层-卷积层</h4><p>   输入图片：32*32</p>
+<p>   卷积核大小：5*5</p>
+<p>   卷积核种类：6</p>
+<p>   输出featuremap大小：28*28 （32-5+1）&#x3D;28</p>
+<p>   神经元数量：28<em>28</em>6</p>
+<p>   可训练参数：（5<em>5+1) * 6（每个滤波器5</em>5&#x3D;25个unit参数和一个bias参数，一共6个滤波器）</p>
+<p>   连接数：（5<em>5+1）</em>6<em>28</em>28&#x3D;122304</p>
+<p>   <strong>详细说明：</strong>对输入图像进行第一次卷积运算（使用 6 个大小为 5<em>5 的卷积核），得到6个C1特征图（6个大小为28</em>28的 feature maps, 32-5+1&#x3D;28）。我们再来看看需要多少个参数，卷积核的大小为5<em>5，总共就有6</em>（5<em>5+1）&#x3D;156个参数，其中+1是表示一个核有一个bias。对于卷积层C1，C1内的每个像素都与输入图像中的5</em>5个像素和1个bias有连接，所以总共有156<em>28</em>28&#x3D;122304个连接（connection）。有122304个连接，但是我们只需要学习156个参数，主要是通过权值共享实现的。</p>
+<h4 id="3、S2层-池化层（下采样层）"><a href="#3、S2层-池化层（下采样层）" class="headerlink" title="3、S2层-池化层（下采样层）"></a>3、S2层-池化层（下采样层）</h4><p>   输入：28*28</p>
+<p>   采样区域：2*2</p>
+<p>   采样方式：4个输入相加，乘以一个可训练参数，再加上一个可训练偏置。结果通过sigmoid</p>
+<p>   采样种类：6</p>
+<p>   输出featureMap大小：14*14（28&#x2F;2）</p>
+<p>   神经元数量：14<em>14</em>6</p>
+<p>   可训练参数：2*6（和的权+偏置）</p>
+<p>   连接数：（2<em>2+1）</em>6<em>14</em>14</p>
+<p>   S2中每个特征图的大小是C1中特征图大小的1&#x2F;4。</p>
+<p>​    <strong>详细说明：</strong>第一次卷积之后紧接着就是池化运算，使用 2<em>2核 进行池化，于是得到了S2，6个14</em>14的 特征图（28&#x2F;2&#x3D;14）。S2这个pooling层是对C1中的2*2区域内的像素求和乘以一个权值系数再加上一个偏置，然后将这个结果再做一次映射。于是每个池化核有两个训练参数，所以共有2x6&#x3D;12个训练参数，但是有5x14x14x6&#x3D;5880个连接。</p>
+<h4 id="4、C3层-卷积层"><a href="#4、C3层-卷积层" class="headerlink" title="4、C3层-卷积层"></a>4、C3层-卷积层</h4><p>​    输入：S2中所有6个或者几个特征map组合</p>
+<p>   卷积核大小：5*5</p>
+<p>   卷积核种类：16</p>
+<p>   输出featureMap大小：10*10 (14-5+1)&#x3D;10</p>
+<p>   C3中的每个特征map是连接到S2中的所有6个或者几个特征map的，表示本层的特征map是上一层提取到的特征map的不同组合。</p>
+<p>​    存在的一个方式是：C3的前6个特征图以S2中3个相邻的特征图子集为输入。接下来6个特征图以S2中4个相邻特征图子集为输入。然后的3个以不相邻的4个特征图子集为输入。最后一个将S2中所有特征图为输入。则：可训练参数：6*(3<em>5</em>5+1)+6*(4<em>5</em>5+1)+3*(4<em>5</em>5+1)+1*(6<em>5</em>5+1)&#x3D;1516</p>
+<p>​    连接数：10<em>10</em>1516&#x3D;151600</p>
+<p>​    <strong>详细说明：</strong>第一次池化之后是第二次卷积，第二次卷积的输出是C3，16个10x10的特征图，卷积核大小是 5<em>5. 我们知道S2 有6个 14</em>14 的特征图，怎么从6 个特征图得到 16个特征图了？ 这里是通过对S2 的特征图特殊组合计算得到的16个特征图。具体如下：</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/bzQLhDZu7PrTqMe.png" alt="image-20221215224359251"></p>
+<p>​    C3的前6个feature map（对应上图第一个红框的6列）与S2层相连的3个feature map相连接（上图第一个红框），后面6个feature map与S2层相连的4个feature map相连接（上图第二个红框），后面3个feature map与S2层部分不相连的4个feature map相连接，最后一个与S2层的所有feature map相连。卷积核大小依然为5<em>5，所以总共有6</em>(3<em>5</em>5+1)+6*(4<em>5</em>5+1)+3*(4<em>5</em>5+1)+1*(6<em>5</em>5+1)&#x3D;1516个参数。而图像大小为10*10，所以共有151600个连接。</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/hjOm5ZatkoErS39.png" alt="image-20221215224609718"></p>
+<p>​    C3与S2中前3个图相连的卷积结构如下图所示：</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/DsCLyKd1uFVgUqt.png"></p>
+<p>​    上图对应的参数为 3<em>5</em>5+1，一共进行6次卷积得到6个特征图，所以有6<em>（3</em>5*5+1）参数。 为什么采用上述这样的组合了？论文中说有两个原因：1）减少参数，2）这种不对称的组合连接的方式有利于提取多种组合特征。</p>
+<h4 id="5、S4层-池化层（下采样层）"><a href="#5、S4层-池化层（下采样层）" class="headerlink" title="5、S4层-池化层（下采样层）"></a>5、S4层-池化层（下采样层）</h4><p>​    输入：10*10</p>
+<p>​    采样区域：2*2</p>
+<p>   采样方式：4个输入相加，乘以一个可训练参数，再加上一个可训练偏置。结果通过sigmoid</p>
+<p>   采样种类：16</p>
+<p>   输出featureMap大小：5*5（10&#x2F;2）</p>
+<p>   神经元数量：5<em>5</em>16&#x3D;400</p>
+<p>   可训练参数：2*16&#x3D;32（和的权+偏置）</p>
+<p>   连接数：16<em>（2</em>2+1）<em>5</em>5&#x3D;2000</p>
+<p>   S4中每个特征图的大小是C3中特征图大小的1&#x2F;4</p>
+<p>   <strong>详细说明：</strong>S4是pooling层，窗口大小仍然是2*2，共计16个feature map，C3层的16个10x10的图分别进行以2x2为单位的池化得到16个5x5的特征图。这一层有2x16共32个训练参数，5x5x5x16&#x3D;2000个连接。连接的方式与S2层类似。</p>
+<h4 id="6、C5层-卷积层"><a href="#6、C5层-卷积层" class="headerlink" title="6、C5层-卷积层"></a>6、C5层-卷积层</h4><p>   输入：S4层的全部16个单元特征map（与s4全相连）</p>
+<p>   卷积核大小：5*5</p>
+<p>   卷积核种类：120</p>
+<p>   输出featureMap大小：1*1（5-5+1）</p>
+<p>   可训练参数&#x2F;连接：120<em>（16</em>5*5+1）&#x3D;48120</p>
+<p>   <strong>详细说明：</strong>C5层是一个卷积层。由于S4层的16个图的大小为5x5，与卷积核的大小相同，所以卷积后形成的图的大小为1x1。这里形成120个卷积结果。每个都与上一层的16个图相连。所以共有(5x5x16+1)x120 &#x3D; 48120个参数，同样有48120个连接。C5层的网络结构如下：</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/ue49pVs68dxlCkh.png"></p>
+<h4 id="7、F6层-全连接层"><a href="#7、F6层-全连接层" class="headerlink" title="7、F6层-全连接层"></a>7、F6层-全连接层</h4><p>   输入：c5 120维向量</p>
+<p>   计算方式：计算输入向量和权重向量之间的点积，再加上一个偏置，结果通过sigmoid函数输出。</p>
+<p>   可训练参数:84*(120+1)&#x3D;10164</p>
+<p>   <strong>详细说明：</strong>6层是全连接层。F6层有84个节点，对应于一个7x12的比特图，-1表示白色，1表示黑色，这样每个符号的比特图的黑白色就对应于一个编码。该层的训练参数和连接数是(120 + 1)x84&#x3D;10164。ASCII编码图如下：</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/JiD9HlmRLqKzGF6.png"></p>
+<p>   F6层的连接方式如下：</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/EZHMmayxz2QgwcV.png"></p>
+<h4 id="8、Output层-全连接层"><a href="#8、Output层-全连接层" class="headerlink" title="8、Output层-全连接层"></a>8、Output层-全连接层</h4><p>​    Output层也是全连接层，共有10个节点，分别代表数字0到9，且如果节点i的值为0，则网络识别的结果是数字i。采用的是径向基函数（RBF）的网络连接方式。假设x是上一层的输入，y是RBF的输出，则RBF输出的计算方式是：</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/HZL3t5vycbSVKfd.png"></p>
+<p>   上式w_ij 的值由i的比特图编码确定，i从0到9，j取值从0到7*12-1。RBF输出的值越接近于0，则越接近于i，即越接近于i的ASCII编码图，表示当前网络输入的识别结果是字符i。该层有84x10&#x3D;840个参数和连接。</p>
+<p><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/15/pdVS2koYELIah57.png"></p>
+<p>上图是LeNet-5识别数字3的过程。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ul>
+<li>LeNet-5是一种用于手写体字符识别的非常高效的卷积神经网络。</li>
+<li>卷积神经网络能够很好的利用图像的结构信息。</li>
+<li>卷积层的参数较少，这也是由卷积层的主要特性即局部连接和共享权重所决定。</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top">HYK</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top/2022/12/12/%E8%AE%BA%E6%96%87%E7%A0%94%E8%AF%BB/">https://learn.hykpromax.top/2022/12/12/%E8%AE%BA%E6%96%87%E7%A0%94%E8%AF%BB/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://learn.hykpromax.top" target="_blank">Study-HYK</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD/">人工智能</a><a class="post-meta__tags" href="/tags/LeNet/">LeNet</a></div><div class="post_share"><div class="social-share" data-image="https://s2.loli.net/2022/12/08/oU7naqtXDwd23Y6.webp" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2022/12/10/How%20to%20install%20Pytorch/"><img class="next-cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/08/Wk2a8Riby7cVKAQ.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Pytorch的安装指南</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2022/12/08/CNN%E5%9F%BA%E7%A1%80/" title="LeNet-1"><img class="cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/08/oU7naqtXDwd23Y6.webp" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-12-08</div><div class="title">LeNet-1</div></div></a></div><div><a href="/2022/12/10/Pytorch_Demo/" title="LeNet-2"><img class="cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/08/Wk2a8Riby7cVKAQ.webp" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-12-10</div><div class="title">LeNet-2</div></div></a></div><div><a href="/2022/12/10/How%20to%20install%20Pytorch/" title="Pytorch的安装指南"><img class="cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/08/Wk2a8Riby7cVKAQ.webp" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-12-10</div><div class="title">Pytorch的安装指南</div></div></a></div><div><a href="/2022/12/08/%E8%B5%84%E6%BA%90%E5%88%97%E8%A1%A8/" title="神经网络基础模型学习资源"><img class="cover" src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/08/Wk2a8Riby7cVKAQ.webp" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-12-08</div><div class="title">神经网络基础模型学习资源</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">HYK</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">6</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/HYK-X" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://space.bilibili.com/161889615" target="_blank" title="BiliBili"><i class="fas fa-brands fa-bilibili"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">爱人工智能，爱欣然，爱猫羽雫</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Lenet%E7%A0%94%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">Lenet研读</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%BA%E6%96%87%E7%A0%94%E8%AF%BB%E4%BB%A5%E5%8F%8A%E7%90%86%E8%A7%A3"><span class="toc-number">1.1.</span> <span class="toc-text">论文研读以及理解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Convolutional-Networks-%E5%8D%B7%E7%A7%AF%E7%BD%91%E7%BB%9C"><span class="toc-number">1.1.1.</span> <span class="toc-text">Convolutional Networks 卷积网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LeNet-5"><span class="toc-number">1.1.2.</span> <span class="toc-text">LeNet-5</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1%E3%80%81INPUT%E5%B1%82-%E8%BE%93%E5%85%A5%E5%B1%82"><span class="toc-number">1.1.2.1.</span> <span class="toc-text">1、INPUT层-输入层</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2%E3%80%81C1%E5%B1%82-%E5%8D%B7%E7%A7%AF%E5%B1%82"><span class="toc-number">1.1.2.2.</span> <span class="toc-text">2、C1层-卷积层</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3%E3%80%81S2%E5%B1%82-%E6%B1%A0%E5%8C%96%E5%B1%82%EF%BC%88%E4%B8%8B%E9%87%87%E6%A0%B7%E5%B1%82%EF%BC%89"><span class="toc-number">1.1.2.3.</span> <span class="toc-text">3、S2层-池化层（下采样层）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4%E3%80%81C3%E5%B1%82-%E5%8D%B7%E7%A7%AF%E5%B1%82"><span class="toc-number">1.1.2.4.</span> <span class="toc-text">4、C3层-卷积层</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#5%E3%80%81S4%E5%B1%82-%E6%B1%A0%E5%8C%96%E5%B1%82%EF%BC%88%E4%B8%8B%E9%87%87%E6%A0%B7%E5%B1%82%EF%BC%89"><span class="toc-number">1.1.2.5.</span> <span class="toc-text">5、S4层-池化层（下采样层）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6%E3%80%81C5%E5%B1%82-%E5%8D%B7%E7%A7%AF%E5%B1%82"><span class="toc-number">1.1.2.6.</span> <span class="toc-text">6、C5层-卷积层</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#7%E3%80%81F6%E5%B1%82-%E5%85%A8%E8%BF%9E%E6%8E%A5%E5%B1%82"><span class="toc-number">1.1.2.7.</span> <span class="toc-text">7、F6层-全连接层</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#8%E3%80%81Output%E5%B1%82-%E5%85%A8%E8%BF%9E%E6%8E%A5%E5%B1%82"><span class="toc-number">1.1.2.8.</span> <span class="toc-text">8、Output层-全连接层</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.2.</span> <span class="toc-text">总结</span></a></li></ol></li></ol></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2022 By HYK</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div></div></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module"></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><script src="/js/search/local-search.js"></script><div class="js-pjax"></div><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="30" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-nest.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><!-- hexo injector body_end start --><script data-pjax>
+  function butterfly_footer_beautify_injector_config(){
+    var parent_div_git = document.getElementById('footer-wrap');
+    var item_html = '<div id="workboard"></div><p id="ghbdages"><a class="github-badge" target="_blank" href="https://hexo.io/" style="margin-inline:5px" data-title="博客框架为Hexo_v6.2.0" title=""><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img.shields.io/badge/Frame-Hexo-blue?style=flat&amp;logo=hexo" alt=""/></a><a class="github-badge" target="_blank" href="https://butterfly.js.org/" style="margin-inline:5px" data-title="主题版本Butterfly_v4.3.1" title=""><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img.shields.io/badge/Theme-Butterfly-6513df?style=flat&amp;logo=bitdefender" alt=""/></a><a class="github-badge" target="_blank" href="https://vercel.com/" style="margin-inline:5px" data-title="本站采用多线部署，主线路托管于Vercel" title=""><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img.shields.io/badge/Hosted-Vercel-brightgreen?style=flat&amp;logo=Vercel" alt=""/></a><a class="github-badge" target="_blank" href="https://dashboard.4everland.org/" style="margin-inline:5px" data-title="本站采用多线部署，备用线路托管于4EVERLAND" title=""><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img.shields.io/badge/Hosted-4EVERLAND-22DDDD?style=flat&amp;logo=IPFS" alt=""/></a><a class="github-badge" target="_blank" href="https://github.com/" style="margin-inline:5px" data-title="本站项目由Github托管" title=""><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img.shields.io/badge/Source-Github-d021d6?style=flat&amp;logo=GitHub" alt=""/></a><a class="github-badge" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/" style="margin-inline:5px" data-title="本站采用知识共享署名-非商业性使用-相同方式共享4.0国际许可协议进行许可" title=""><img src= "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-lazy-src="https://img.shields.io/badge/Copyright-BY--NC--SA%204.0-d42328?style=flat&amp;logo=Claris" alt=""/></a></p>';
+    console.log('已挂载butterfly_footer_beautify')
+    parent_div_git.insertAdjacentHTML("beforeend",item_html)
+    }
+  var elist = 'null'.split(',');
+  var cpage = location.pathname;
+  var epage = 'all';
+  var flag = 0;
+
+  for (var i=0;i<elist.length;i++){
+    if (cpage.includes(elist[i])){
+      flag++;
+    }
+  }
+
+  if ((epage ==='all')&&(flag == 0)){
+    butterfly_footer_beautify_injector_config();
+  }
+  else if (epage === cpage){
+    butterfly_footer_beautify_injector_config();
+  }
+  </script><script async src="/js/runtime.js"></script><!-- hexo injector body_end end --></body></html>
