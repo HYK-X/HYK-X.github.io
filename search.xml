@@ -4,13 +4,27 @@
   
     
     <entry>
-      <title></title>
+      <title>VGG-1</title>
       <link href="/2022/12/21/VGG/"/>
       <url>/2022/12/21/VGG/</url>
       
-        <content type="html"><![CDATA[<h1 id="VGG理论结构"><a href="#VGG理论结构" class="headerlink" title="VGG理论结构"></a>VGG理论结构</h1><h1 id="VGG详解"><a href="#VGG详解" class="headerlink" title="VGG详解"></a>VGG详解</h1><p>VGG 在2014年由牛津大学著名研究组 <strong>VGG</strong>（<strong>Visual Geometry Group</strong>）提出，斩获该年 ImageNet 竞赛中 Localization Task（定位任务）第一名和 Classification Task（分类任务）第二名。<br>原论文地址：<a href="https://arxiv.org/abs/1409.1556">Very Deep Convolutional Networks for Large-Scale Image Recognition</a></p><p>VGG网络的创新点：通过堆叠多个小卷积核来替代大尺度卷积核，可以减少训练参数，同时能保证相同的感受野。<br>论文中提到，可以通过堆叠两个3×3的卷积核替代5x5的卷积核，堆叠三个3×3的卷积核替代7x7的卷积核。</p><h2 id="CNN感受野"><a href="#CNN感受野" class="headerlink" title="CNN感受野"></a>CNN感受野</h2><p>在卷积神经网络中，决定某一层输出结果中一个元素所对应的输入层的区域大小，被称作<strong>感受野</strong>（<strong>receptive field</strong>）。<br>通俗的解释是，<strong>输出feature map上的一个单元 对应 输入层上的区域大小。</strong></p><p>以下图为例，输出层 layer3 中一个单元 对应 输入层 layer2 上区域大小为2×2（池化操作），对应输入层 layer1 上大小为5×5<br>（可以这么理解，layer2中 2×2区域中的每一块对应一个3×3的卷积核，又因为 stride&#x3D;2，所以layer1的感受野为5×5）<br><img src="https://s2.loli.net/2022/12/16/hPRJXLiv3KqM6eF.png" alt="在这里插入图片描述"><br>感受野的计算公式为：<br>                                                        F(i)&#x3D;(F(i+1)−1)×Stride +Ksize</p><ul><li>F(i) 为第 i 层感受野</li><li>Stride 为第 i 层的步距</li><li>Ksize 为 卷积核 或 池化核 尺寸</li></ul><p>以上图为例：</p><ul><li>Feature map: F ( 3 ) &#x3D; 1 </li><li>Pool1：F ( 2 ) &#x3D; ( 1 − 1 ) × 2 + 2 &#x3D; 2 </li><li>Conv1: F ( 1 ) &#x3D; ( 2 − 1 ) × 2 + 3 &#x3D; 5</li></ul><h2 id="小卷积核"><a href="#小卷积核" class="headerlink" title="小卷积核"></a>小卷积核</h2><p>现在，我们来验证下VGG论文中的两点结论：</p><p><strong>1.堆叠两个3×3的卷积核替代5x5的卷积核，堆叠三个3×3的卷积核替代7x7的卷积核。替代前后感受野是否相同？</strong></p><p>（注：VGG网络中卷积的Stride默认为1）</p><ul><li>Feature map: F &#x3D; 1 F&#x3D;1F&#x3D;1</li><li>Conv3x3(3): F &#x3D; ( 1 − 1 ) × 1 + 3 &#x3D; 3 </li><li>Conv3x3(2): F &#x3D; ( 3 − 1 ) × 1 + 3 &#x3D; 5  （5×5卷积核感受野）</li><li>Conv3x3(1): F &#x3D; ( 5 − 1 ) × 1 + 3 &#x3D; 7 （7×7卷积核感受野）</li></ul><p><strong>2.堆叠3×3卷积核后训练参数是否真的减少了？</strong></p><p>注：CNN参数个数 &#x3D; 卷积核尺寸×卷积核深度 × 卷积核组数 &#x3D; 卷积核尺寸 × 输入特征矩阵深度 × 输出特征矩阵深度<br>现假设 输入特征矩阵深度 &#x3D; 输出特征矩阵深度 &#x3D; C</p><ul><li>使用7×7卷积核所需参数个数：$ 7×7×C×C&#x3D;49C^2$</li><li>堆叠三个3×3的卷积核所需参数个数：$3×3×C×C+3×3×C×C+3×3×C×C&#x3D;27C^2$</li></ul><h2 id="VGG-16"><a href="#VGG-16" class="headerlink" title="VGG-16"></a>VGG-16</h2><p>VGG网络有多个版本，一般常用的是VGG-16模型，其网络结构如下如所示：<br><img src="https://s2.loli.net/2022/12/16/QAdOBTv2oz9LFpl.png" alt="在这里插入图片描述"><br>稍作计算可以发现，经3×3卷积的特征矩阵的尺寸是不改变的：</p><p><img src="https://s2.loli.net/2022/12/16/s9JAebzyhDXWHIa.png"></p><p><img src="https://s2.loli.net/2022/12/21/2RlUiSzkmNHcv7j.png" alt="在这里插入图片描述"></p><p>VGG-16网络，其参数多达1亿3千万，模型更加复杂一些，一般情况下，其CONV layer和POOL layer设置如下：</p><ul><li>CONV &#x3D; 3×3 filters, s &#x3D; 1, same</li><li>MAX-POOL &#x3D; 2×2, s &#x3D; 2</li></ul><p><img src="https://img-blog.csdnimg.cn/20200423121435776.png#pic_center" alt="在这里插入图片描述"></p>]]></content>
+        <content type="html"><![CDATA[<h1 id="VGG理论结构"><a href="#VGG理论结构" class="headerlink" title="VGG理论结构"></a>VGG理论结构</h1><h2 id="VGG详解"><a href="#VGG详解" class="headerlink" title="VGG详解"></a>VGG详解</h2><p>VGG 在2014年由牛津大学著名研究组 <strong>VGG</strong>（<strong>Visual Geometry Group</strong>）提出，斩获该年 ImageNet 竞赛中 Localization Task（定位任务）第一名和 Classification Task（分类任务）第二名。<br>原论文地址：<a href="https://arxiv.org/abs/1409.1556">Very Deep Convolutional Networks for Large-Scale Image Recognition</a></p><p>VGG网络的创新点：通过堆叠多个小卷积核来替代大尺度卷积核，可以减少训练参数，同时能保证相同的感受野。<br>论文中提到，可以通过堆叠两个3×3的卷积核替代5x5的卷积核，堆叠三个3×3的卷积核替代7x7的卷积核。</p><h2 id="CNN感受野"><a href="#CNN感受野" class="headerlink" title="CNN感受野"></a>CNN感受野</h2><p>在卷积神经网络中，决定某一层输出结果中一个元素所对应的输入层的区域大小，被称作<strong>感受野</strong>（<strong>receptive field</strong>）。<br>通俗的解释是，<strong>输出feature map上的一个单元 对应 输入层上的区域大小。</strong></p><p>以下图为例，输出层 layer3 中一个单元 对应 输入层 layer2 上区域大小为2×2（池化操作），对应输入层 layer1 上大小为5×5<br>（可以这么理解，layer2中 2×2区域中的每一块对应一个3×3的卷积核，又因为 stride&#x3D;2，所以layer1的感受野为5×5）<br><img src="https://s2.loli.net/2022/12/16/hPRJXLiv3KqM6eF.png" alt="在这里插入图片描述"><br>感受野的计算公式为：<br>                                                        F(i)&#x3D;(F(i+1)−1)×Stride +Ksize</p><ul><li>F(i) 为第 i 层感受野</li><li>Stride 为第 i 层的步距</li><li>Ksize 为 卷积核 或 池化核 尺寸</li></ul><p>以上图为例：</p><ul><li>Feature map: F ( 3 ) &#x3D; 1 </li><li>Pool1：F ( 2 ) &#x3D; ( 1 − 1 ) × 2 + 2 &#x3D; 2 </li><li>Conv1: F ( 1 ) &#x3D; ( 2 − 1 ) × 2 + 3 &#x3D; 5</li></ul><h2 id="小卷积核"><a href="#小卷积核" class="headerlink" title="小卷积核"></a>小卷积核</h2><p>现在，我们来验证下VGG论文中的两点结论：</p><p><strong>1.堆叠两个3×3的卷积核替代5x5的卷积核，堆叠三个3×3的卷积核替代7x7的卷积核。替代前后感受野是否相同？</strong></p><p>（注：VGG网络中卷积的Stride默认为1）</p><ul><li>Feature map: F &#x3D; 1 F&#x3D;1F&#x3D;1</li><li>Conv3x3(3): F &#x3D; ( 1 − 1 ) × 1 + 3 &#x3D; 3 </li><li>Conv3x3(2): F &#x3D; ( 3 − 1 ) × 1 + 3 &#x3D; 5  （5×5卷积核感受野）</li><li>Conv3x3(1): F &#x3D; ( 5 − 1 ) × 1 + 3 &#x3D; 7 （7×7卷积核感受野）</li></ul><p><strong>2.堆叠3×3卷积核后训练参数是否真的减少了？</strong></p><p>注：CNN参数个数 &#x3D; 卷积核尺寸×卷积核深度 × 卷积核组数 &#x3D; 卷积核尺寸 × 输入特征矩阵深度 × 输出特征矩阵深度<br>现假设 输入特征矩阵深度 &#x3D; 输出特征矩阵深度 &#x3D; C</p><ul><li>使用7×7卷积核所需参数个数：$ 7×7×C×C&#x3D;49C^2$</li><li>堆叠三个3×3的卷积核所需参数个数：$3×3×C×C+3×3×C×C+3×3×C×C&#x3D;27C^2$</li></ul><h2 id="VGG-16"><a href="#VGG-16" class="headerlink" title="VGG-16"></a>VGG-16</h2><p>VGG网络有多个版本，一般常用的是VGG-16模型，其网络结构如下如所示：<br><img src="https://s2.loli.net/2022/12/16/QAdOBTv2oz9LFpl.png" alt="在这里插入图片描述"><br>稍作计算可以发现，经3×3卷积的特征矩阵的尺寸是不改变的：</p><p><img src="https://s2.loli.net/2022/12/16/s9JAebzyhDXWHIa.png"></p><p><img src="https://s2.loli.net/2022/12/21/2RlUiSzkmNHcv7j.png" alt="在这里插入图片描述"></p><p>VGG-16网络，其参数多达1亿3千万，模型更加复杂一些，一般情况下，其CONV layer和POOL layer设置如下：</p><ul><li>CONV &#x3D; 3×3 filters, s &#x3D; 1, same</li><li>MAX-POOL &#x3D; 2×2, s &#x3D; 2</li></ul><p><img src="https://img-blog.csdnimg.cn/20200423121435776.png#pic_center" alt="在这里插入图片描述"></p>]]></content>
       
       
+      <categories>
+          
+          <category> 学习 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 人工智能 </tag>
+            
+            <tag> VGG </tag>
+            
+        </tags>
       
     </entry>
     
@@ -351,7 +365,7 @@
     
     
     <entry>
-      <title>CNN基础</title>
+      <title>CNN</title>
       <link href="/2022/12/08/CNN%E5%9F%BA%E7%A1%80/"/>
       <url>/2022/12/08/CNN%E5%9F%BA%E7%A1%80/</url>
       
