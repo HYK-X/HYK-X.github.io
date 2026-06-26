@@ -1,0 +1,174 @@
+/* 页脚与头图半透明 */
+#footer {
+  background: rgba(102,204,255,0.9) !important;
+  text-align: center;
+}
+#page-header {
+  background: rgba(102,204,255,0.9) !important;
+}
+
+/* 白天模式遮罩透明 */
+#footer::before {
+  background: transparent !important;
+}
+#page-header::before {
+  background: transparent !important;
+}
+
+/* 夜间模式遮罩透明 */
+[data-theme="dark"] #footer::before {
+  background: transparent !important;
+}
+[data-theme="dark"] #page-header::before {
+  background: transparent !important;
+}
+
+#footer .footer-other,
+#footer .footer-copyright,
+#footer #ghbdages,
+#footer #workboard {
+  text-align: center;
+}
+
+#footer #ghbdages {
+  margin: 0.5rem auto 0;
+}
+
+/* Butterfly 原生 404 页面增强 */
+.type-404 #content-inner {
+  max-width: 1100px;
+}
+
+.type-404 .error-content {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(280px, 1.05fr);
+  min-height: 420px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(242, 250, 255, 0.74)),
+    radial-gradient(circle at 18% 18%, rgba(102, 204, 255, 0.22), transparent 34%),
+    radial-gradient(circle at 88% 82%, rgba(255, 196, 87, 0.2), transparent 36%);
+  box-shadow: 0 22px 60px rgba(27, 67, 96, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.type-404 .error-content::before {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  z-index: 1;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(102, 204, 255, 0.36);
+  border-radius: 999px;
+  color: #176a8a;
+  content: "HTTP 404";
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.type-404 .error-img {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  height: auto !important;
+  padding: 4.5rem 2.4rem 2.4rem;
+}
+
+.type-404 .error-img img {
+  width: min(100%, 430px);
+  height: auto;
+  border-radius: 8px;
+  filter: drop-shadow(0 18px 30px rgba(23, 106, 138, 0.18));
+  background: transparent !important;
+}
+
+.type-404 .error-info {
+  display: flex !important;
+  justify-content: center;
+  width: auto !important;
+  height: auto !important;
+  padding: 4.5rem 3rem 3rem 1rem;
+  text-align: left !important;
+}
+
+.type-404 .error_title {
+  margin: 0 !important;
+  color: #145c78;
+  font-size: clamp(5.5rem, 12vw, 10rem) !important;
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: 0;
+}
+
+.type-404 .error_subtitle {
+  position: relative;
+  margin: 1.35rem 0 0 !important;
+  max-width: 26rem;
+  color: #395a67;
+  font-size: clamp(1.15rem, 2.5vw, 1.65rem) !important;
+  font-weight: 650;
+  line-height: 1.55;
+  -webkit-line-clamp: unset !important;
+}
+
+.type-404 .error_subtitle::after {
+  display: block;
+  margin-top: 1rem;
+  color: #607984;
+  content: "链接可能被移动、删除，或只是输入错了。试试返回首页、打开归档，或者用右上角搜索继续找。";
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.8;
+}
+
+[data-theme="dark"] .type-404 .error-content {
+  border-color: rgba(135, 206, 235, 0.18);
+  background:
+    linear-gradient(135deg, rgba(24, 34, 42, 0.92), rgba(16, 25, 32, 0.86)),
+    radial-gradient(circle at 18% 18%, rgba(102, 204, 255, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 82%, rgba(255, 196, 87, 0.1), transparent 36%);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme="dark"] .type-404 .error-content::before {
+  border-color: rgba(102, 204, 255, 0.26);
+  color: #9bdcff;
+  background: rgba(18, 30, 38, 0.82);
+}
+
+[data-theme="dark"] .type-404 .error_title {
+  color: #9bdcff;
+}
+
+[data-theme="dark"] .type-404 .error_subtitle {
+  color: #d6e8ef;
+}
+
+[data-theme="dark"] .type-404 .error_subtitle::after {
+  color: #a9bdc6;
+}
+
+@media (max-width: 768px) {
+  .type-404 .error-content {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .type-404 .error-img {
+    padding: 4.8rem 1.4rem 0.8rem;
+  }
+
+  .type-404 .error-info {
+    padding: 0.6rem 1.6rem 2.2rem;
+    text-align: center !important;
+  }
+
+  .type-404 .error_subtitle {
+    margin-inline: auto !important;
+  }
+}
