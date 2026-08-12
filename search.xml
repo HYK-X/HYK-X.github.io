@@ -35,6 +35,254 @@
     
     
     <entry>
+      <title>CAD_Converter：从图纸转换到 AI 分析的工程实践</title>
+      <link href="/2026/03/14/cad-converter-engineering-notes/"/>
+      <url>/2026/03/14/cad-converter-engineering-notes/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/CAD_Converter">CAD_Converter</a> 是我参与设计和构建的一套 CAD 图纸处理工具。仓库目前是私有的，这里只记录可以公开的技术方案，不涉及内部图纸、模型配置和接口信息。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>项目面对的不是单纯的格式转换，而是一批来源、版本和绘图习惯都不统一的工程图纸。使用者需要先把 DWG 转成可处理的 DXF，再按规则清理图层、文字和颜色，最后导出 PNG、PDF 或 SVG。部分图纸还要继续交给视觉模型分析，从中提取设备与连接关系，并把识别结果标回图中。</p><p>如果这些步骤各自做成零散脚本，每换一张图就要手动搬文件、改参数，也很难知道失败发生在哪一步。因此我想把它做成一套有界面、能批量运行、能记录进度，也可以直接打包交付的完整工具。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>我把仓库分成入口、核心能力、界面页面和交付脚本几层。</p><p><code>src/main.py</code> 负责启动 Qt 应用和处理运行期消息；<code>src/gui/main_window.py</code> 组织主窗口，并把功能拆成“格式转换”“图纸清理”“AI 分析”三个页面。页面只负责收集参数、展示预览和反馈任务状态，真正的处理逻辑放在 <code>src/core</code>。</p><p>核心层继续分工：<code>dwg_converter.py</code> 适配 ODA File Converter 与 LibreDWG，<code>cad_processor.py</code> 负责可组合的清理流水线，<code>converter.py</code> 负责图像和矢量格式导出，<code>font_manager.py</code> 处理工程字体，<code>ai_analyzer.py</code> 负责图像编码、模型调用、结构化解析与标注回绘。设置和通用路径处理也各自独立。</p><p>这种拆法是我在构建整套代码时定下来的。三个界面页共享同一套核心能力，命令行工具的特殊规则不会进入 GUI，AI 分析也建立在转换结果之上，不会反过来改坏原图。</p><h2 id="DWG-转换层怎么统一"><a href="#DWG-转换层怎么统一" class="headerlink" title="DWG 转换层怎么统一"></a>DWG 转换层怎么统一</h2><p><code>ezdxf</code> 适合读取和修改 DXF，却不能直接覆盖所有 DWG 场景。我没有把某一个转换器写死，而是定义了转换引擎枚举和统一入口。程序先检测本机可用工具，兼容性上优先 ODA，找不到时再回退到 LibreDWG。</p><p>两种工具的调用方式不同。LibreDWG 接近单文件转换，ODA 则要求传入输入和输出目录。我在 ODA 适配器里为每个任务建立临时目录，把单个 DWG 放进去，转换完成后再取回目标 DXF。上层始终只传源文件和输出文件，不需要知道目录转换这项限制。</p><p>这一层还负责进度回调、超时、输出文件检查和错误整理。只有外部进程退出并且目标文件真实存在，任务才算成功。</p><h2 id="图纸清理做成可组合流水线"><a href="#图纸清理做成可组合流水线" class="headerlink" title="图纸清理做成可组合流水线"></a>图纸清理做成可组合流水线</h2><p>清理规则不是写在一个很长的函数里。<code>cad_processor.py</code> 中有统一的 <code>ProcessingStep</code>，下面分别实现查找最大图块、单次炸块、删除轴线层、删除文字密集层、删除全部文字、灰白实体筛选和统一灰色等步骤。</p><p>默认流水线把这些步骤按顺序组合，<code>CADProcessor</code> 负责执行。这样做是因为顺序会改变结果：图块没有展开，内部实体就可能无法被后续规则命中；辅助文字和轴线没有清掉，也会干扰导出效果与模型判断。</p><p>每一步都能单独汇报进度。遇到图纸处理异常时，我可以保存中间 DXF，确认是输入图块、图层规则还是颜色判断出了问题，不必只盯着最终图片猜。</p><p>工程字体也是这一层必须处理的现实问题。仓库随程序整理了一批 SHX 字体，并在找不到原字体时尝试映射到可用的 TTF。字体回退不一定完全还原原始排版，但至少避免换一台电脑后直接缺字或中文乱码。</p><h2 id="从批处理到-AI-分析"><a href="#从批处理到-AI-分析" class="headerlink" title="从批处理到 AI 分析"></a>从批处理到 AI 分析</h2><p>大图渲染和批量转换不能占住 Qt 主线程。我把耗时任务放进工作线程和线程池，页面只接收进度、结果与异常。失败后要恢复按钮、清理临时目录，并指出问题属于 DWG 转换、DXF 清理、导出还是模型调用。</p><p>AI 分析层先限制图像尺寸并编码，再通过 <code>httpx</code> 调用视觉模型。模型返回内容会被解析成 <code>Equipment</code>、<code>Connection</code> 和 <code>AnalysisResult</code> 等结构，最后由本地代码绘制设备框与连接标记。解析失败时保留转换后的图像和原始响应，方便继续定位，不会覆盖原始 CAD 文件。</p><p>项目同时维护 <code>build_nuitka.py</code> 和 <code>build_pyinstaller.py</code>。打包时不仅要收集 Python 与 Qt 依赖，还要带上字体、图标、LibreDWG 和 ODA 所需文件。开发环境能运行只是第一关，换到干净电脑后还能启动、转换和正确报错，才算交付完成。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经把格式转换、规则清理、批量任务、预览、AI 分析和打包接成了一条完整路径。整个仓库的模块划分和调用关系都有我的参与，不是几个独立脚本的简单拼接。</p><p>目前最需要补的是测试和提交粒度。仓库只有两次集中提交，后续很难从历史追踪某个兼容性处理的来由；图纸样本差异又很大，也需要建立一组脱敏的回归样例，固定检查实体数量、导出结果和错误分支。</p><p>这次项目让我更确定，CAD 工具的核心不只是“能转”。外部转换器、处理顺序、字体、并发和打包必须一起设计，工具才有机会在真实环境里稳定工作。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Python </tag>
+            
+            <tag> 计算机视觉 </tag>
+            
+            <tag> CAD </tag>
+            
+            <tag> PySide6 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>AI_Psyc_Project：本地模型接入与前后端状态处理</title>
+      <link href="/2026/01/27/ai-psyc-project-fullstack-notes/"/>
+      <url>/2026/01/27/ai-psyc-project-fullstack-notes/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/AI_Psyc_Project">AI_Psyc_Project</a> 是一个私有 Fork 项目。上游提供了初始基础，我参与了当前仓库整套应用的构建设计，并在后续 7 次提交中完成本地模式、模型服务衔接、认证、进度与前后端合并。这里不展开业务数据、提示词和私有模型配置。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>项目要把 AI 对话、语音输入、语音输出、过程评估和报告生成放进同一个应用，同时允许使用在线模型与本地模型。除了普通用户的访谈流程，还需要登录、数据保存和管理界面。</p><p>难点在于这些能力来自不同运行环境。浏览器负责录音和交互，Next.js 负责页面与服务调用，PocketBase 负责认证和数据，本地 Python 后端还要运行 STT、LLM、TTS 与视觉服务。只把每个接口分别接通，整个访谈仍然可能在模式切换、连接中断或页面刷新时失去状态。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>我参与把仓库组织为本地 AI 后端、Next.js 前端和 PocketBase 三部分。</p><p>FastAPI 后端在启动时初始化 <code>VisionService</code>、<code>STTService</code>、<code>ToneService</code>、<code>BrainService</code> 和 <code>MouthService</code>，分别处理视觉、语音识别、语气、模型推理与语音合成。HTTP 接口承担文件上传、STT 和 OpenAI 兼容调用，WebSocket 路由承担需要连续返回文本、音频和轮次状态的实时访谈。</p><p>前端不直接把所有模型逻辑写进组件，而是在 <code>services</code> 下分别放置 Gemini、OpenAI、Qwen 和本地服务适配。<code>MainApp</code> 负责欢迎页、访谈、报告等应用状态，具体页面负责展示和输入。认证及存储通过 PocketBase 接入，服务端操作和 Cookie 再负责 Next.js 两侧的会话衔接。</p><p>这套结构不是我只在末尾补几个接口。我参与了从用户工作流到前端状态、服务适配、本地后端和数据层的整体整合，目标是让同一套界面可以在不同模型方案下完成一次完整评估。</p><h2 id="多模型调用怎么收口"><a href="#多模型调用怎么收口" class="headerlink" title="多模型调用怎么收口"></a>多模型调用怎么收口</h2><p>项目同时存在在线服务和本地服务。直接在 React 组件里到处判断提供方，会让聊天、STT、TTS 与报告各自保存一份配置。同一轮对话中，文本已经切到本地，报告却还在请求在线服务，这类问题很难从界面表面判断。</p><p>我的处理是把差异放进 service 层。组件提交统一输入，服务层负责 URL、鉴权、请求体和响应格式转换。对于本地后端，我还提供 OpenAI 兼容的 <code>/v1/chat/completions</code>，让已有调用路径可以复用，不需要每个页面重新认识一套私有协议。</p><p>本地后端内部也按能力拆开。语音先由 STT 转成文本，Brain 处理上下文，Mouth 生成音频；视觉与语气分析保持独立。服务之间通过明确数据传递，而不是相互读取页面状态。</p><h2 id="实时访谈需要完整的状态协议"><a href="#实时访谈需要完整的状态协议" class="headerlink" title="实时访谈需要完整的状态协议"></a>实时访谈需要完整的状态协议</h2><p>WebSocket 中会连续出现 LLM 文本、TTS 音频、进度和报告就绪等消息。我为消息增加类型与完成标记，前端按类型处理，不把所有字符串直接拼进回答。</p><p>一轮访谈要区分正常完成、用户中止、服务异常和连接断开。文本最后一个分片到达不代表音频已经播放完，报告生成也不应该在轮次状态尚未落定时启动。把这些条件写进协议后，进度条才能由真实轮次驱动，而不是用定时动画假装前进。</p><p>项目后期也尝试把部分本地调用切到纯 HTTP 的 OpenAI 兼容模式，以降低部署复杂度。仓库中保留 WebSocket 路由和轻量 HTTP 路径，是两种运行方式合并过程中留下的状态。它们各自能解决不同场景，接下来需要继续收敛前端究竟使用哪一种作为默认路径。</p><h2 id="认证与前后端合并"><a href="#认证与前后端合并" class="headerlink" title="认证与前后端合并"></a>认证与前后端合并</h2><p>认证链路横跨 PocketBase、服务端操作、浏览器 Cookie 和客户端状态。登录接口返回成功，不代表所有页面已经拿到同一会话。我逐层检查 Cookie 写入、服务端读取、客户端初始化与退出清理，让认证只有明确来源。</p><p>两次较大的前后端合并也不只是处理 Git 冲突。接口字段、可选类型和状态含义变化，可能完全通过 TypeScript 检查，却在真实流程中返回空值。因此每次合并后都要走一遍登录、开始访谈、录音、STT、流式回答、进度、报告和结果保存。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经形成完整应用骨架：Next.js 和 React 负责交互，TypeScript service 层隔离模型差异，FastAPI 组织本地 AI 能力，REST 与 WebSocket 传输不同类型任务，PocketBase 提供认证和存储。</p><p>当前最明显的问题是本地模式仍有 HTTP 与 WebSocket 两条演进路线，部分进度和报告接口为了兼容无数据库模式保留了模拟返回。下一阶段需要明确默认协议，并让演示数据与真实结果有清楚标识。</p><p>这次构建让我看到，多模型应用真正难的不是多放几个模型名称，而是让认证、消息生命周期、语音、报告和持久化对同一轮会话形成一致理解。把这些边界定下来，模型才可以被替换而不拖动整个界面。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 人工智能 </tag>
+            
+            <tag> Next.js </tag>
+            
+            <tag> FastAPI </tag>
+            
+            <tag> WebSocket </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护</title>
+      <link href="/2025/11/02/obs-zoom-to-mouse-zh-maintenance/"/>
+      <url>/2025/11/02/obs-zoom-to-mouse-zh-maintenance/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/obs-zoom-to-mouse-zh">obs-zoom-to-mouse-zh</a> Fork 自 <a href="https://github.com/BlankSourceCode/obs-zoom-to-mouse">BlankSourceCode&#x2F;obs-zoom-to-mouse</a>。我基于上游的核心思路参与了当前中文版本整套脚本的整理与构建，并参考 <code>fixajteknik</code> 的方案处理新版本 OBS 兼容问题。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>录制软件操作或代码讲解时，完整桌面里的文字往往太小。这个脚本需要在 OBS 中根据鼠标位置放大显示器捕获画面，并平滑跟随光标；鼠标停下来后还要留出一个安全区域，避免画面一直晃动。</p><p>旧版本已经有基础能力，但中文用户面对的是英文设置和英文文档，而且脚本在 OBS 32.0.2 上出现兼容问题。我的目标因此不是只翻译几行文字，而是交付一份在当前 OBS 中能加载、能配置、能缩放，也能按文档排错的中文版本。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>这个仓库最终保持得很小：一个约 1299 行的 Lua 主脚本、一份中英双语 README 和一个 GIF 演示。代码全部运行在 OBS Script API 中，不额外引入安装器或后台服务。</p><p>脚本内部按运行职责组织：平台层从 Windows、Linux 或 macOS 获取鼠标和显示器信息；来源层查找当前场景及嵌套场景中的目标源；坐标层计算桌面、来源、场景变换和裁剪后的对应关系；滤镜层创建并更新 Crop&#x2F;Pad；状态层管理放大、缩小和已放大状态；配置层向 OBS 暴露属性、快捷键与保存项。</p><p>我参与整理的是这套完整运行关系，而不是只替换 UI 字符串。脚本从加载、选择来源、计算位置、创建滤镜，到快捷键触发动画和卸载时释放 OBS 对象，需要连成一个生命周期。</p><h2 id="缩放为什么依赖裁剪滤镜"><a href="#缩放为什么依赖裁剪滤镜" class="headerlink" title="缩放为什么依赖裁剪滤镜"></a>缩放为什么依赖裁剪滤镜</h2><p>按下缩放快捷键后，脚本以当前鼠标位置为中心，计算目标裁剪区域，再逐帧改变 Crop&#x2F;Pad 滤镜的宽、高和位置。插值与缓动函数让放大和缩小不会突然跳变。</p><p>自动跟随打开时，鼠标接近放大区域边缘才重新移动画面；鼠标停住后，脚本恢复安全区域。这部分通过 <code>ZoomState</code>、目标区域和计时状态共同控制，不能只用一个“是否放大”的布尔值。</p><p>脚本卸载或切换来源时，还要移除临时滤镜、恢复原始裁剪并释放 OBS source。对象没有正确释放，重新加载脚本后可能出现重复滤镜或失效引用。</p><h2 id="坐标和来源兼容是主要难点"><a href="#坐标和来源兼容是主要难点" class="headerlink" title="坐标和来源兼容是主要难点"></a>坐标和来源兼容是主要难点</h2><p>鼠标位置属于整个桌面，OBS 中的来源却可能被缩放、裁剪或放在嵌套场景里。脚本需要读取来源原始尺寸、场景变换、显示器位置和缩放系数，再把桌面坐标换到目标源上。</p><p>Windows、Linux 与 macOS 获取显示器信息的方式也不一样。显示器排列、主屏切换、方向和系统缩放发生变化后，旧的捕获源信息可能失效。对于普通显示器捕获，脚本尽量自动计算；对于浏览器源、克隆源等非显示器来源，则提供手动位置、尺寸和缩放参数。</p><p>OBS 32.0.2 的兼容修复也发生在这条链路中。我的排查顺序是先确认来源能被正确找到，再检查原始尺寸和 scene item 变换，最后核对裁剪滤镜与鼠标映射。直接调缩放倍率只能掩盖坐标问题。</p><h2 id="中文化和文档怎么一起做"><a href="#中文化和文档怎么一起做" class="headerlink" title="中文化和文档怎么一起做"></a>中文化和文档怎么一起做</h2><p>脚本设置、提示和日志完成中文化后，我重新整理了约 232 行中英双语 README，包含安装步骤、推荐的显示器捕获设置、快捷键、手动坐标、双机支持和已知限制。约 12 MB 的 GIF 直接展示最终效果。</p><p>之所以保留双语，是因为仓库仍然继承上游使用方式，英文读者也能核对原始概念。文档还明确说明 transform crop 与 Crop&#x2F;Pad Filter 的区别，避免脚本自动修改布局后用户不知道发生了什么。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经把 OBS 32.0.2 兼容、跨平台坐标、来源查找、滤镜生命周期、中文界面和使用文档整理为可直接加载的脚本。</p><p>当前限制也很明确：自动计算主要针对显示器捕获，非显示器源需要手动输入；桌面布局变化后通常要重建捕获源并重载脚本。复杂嵌套场景和系统缩放仍需要更多环境验证。</p><p>这次维护让我认识到，汉化项目同样包含完整的工程设计。语言只是用户能看到的一层，底下还要处理宿主 API、对象生命周期、坐标系统和安装说明，版本才能真正可用。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> OBS </tag>
+            
+            <tag> Lua </tag>
+            
+            <tag> 开源 </tag>
+            
+            <tag> 脚本开发 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系</title>
+      <link href="/2025/07/24/maixpy-ui-lib-open-source-contribution/"/>
+      <url>/2025/07/24/maixpy-ui-lib-open-source-contribution/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/MaixPy-UI-Lib">MaixPy-UI-Lib</a> 是我基于 <a href="https://github.com/aristorechina/MaixPy-UI-Lib">aristorechina&#x2F;MaixPy-UI-Lib</a> 参与继续构建的轻量级 UI 库。我的工作覆盖组件组织、分辨率适配、页面系统、包结构、示例和文档，其中多项修改通过 <a href="https://github.com/aristorechina/MaixPy-UI-Lib/pull/2">PR #2</a>、<a href="https://github.com/aristorechina/MaixPy-UI-Lib/pull/4">PR #4</a> 和 <a href="https://github.com/aristorechina/MaixPy-UI-Lib/pull/7">PR #7</a> 合并到上游。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>MaixPy 设备可以直接在图像上绘制界面，但项目一复杂，按钮命中、滑块状态、页面切换和不同分辨率会反复出现。如果每个应用都在主循环里手写坐标判断，UI 代码很快会和视觉算法、相机处理混在一起。</p><p>这个仓库要提供一套适合嵌入式环境的基础 UI：组件足够轻，能够直接绘制到图像；输入事件由管理器统一分发；多页面应用有清楚的进入、退出和返回规则；在不同屏幕尺寸上还能复用同一套设计坐标。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>我参与把代码整理成标准 <code>src/maixpy_ui</code> 包。<code>components</code> 下分别放按钮、滑块、开关、复选框和单选框，每类组件都有对应管理器；<code>core/resolution_adapter.py</code> 负责设计分辨率到设备分辨率的换算；<code>core/ui_manager.py</code> 定义 <code>Page</code> 与 <code>UIManager</code>，组织多页面应用。</p><p>组件只处理自身绘制、触摸命中和状态变化，管理器负责保存组件集合与分发输入。页面则作为更高一层容器，拥有父子关系和生命周期回调。这个层次让我可以在一个页面内组合多种组件，又不会让组件知道整个应用如何导航。</p><p>包入口统一导出常用类，仓库同时保留基础示例、颜色阈值调节和复杂菜单示例。README 按组件给出初始化、回调、主循环和 API，CHANGELOG 记录版本变化，最终整理到 2.4。</p><h2 id="组件和分辨率怎么处理"><a href="#组件和分辨率怎么处理" class="headerlink" title="组件和分辨率怎么处理"></a>组件和分辨率怎么处理</h2><p>Button、Slider、Switch、Checkbox 与 RadioButton 都围绕同一种运行方式设计：应用创建组件和回调，把触摸坐标交给管理器，再把组件绘制到当前图像。状态变化通过回调传给业务代码，不让业务层直接修改组件内部细节。</p><p>不同 Maix 设备的屏幕尺寸不一样。<code>ResolutionAdapter</code> 保存设计基准分辨率与实际分辨率，统一缩放位置、尺寸和字体参数。应用可以按 640x480 设计，再在目标设备上转换，不必到处散落倍率计算。</p><p>嵌入式环境资源有限，所以这套库没有引入复杂布局引擎。它选择明确坐标加统一适配，换取更可控的绘制成本。</p><h2 id="页面系统怎么构建"><a href="#页面系统怎么构建" class="headerlink" title="页面系统怎么构建"></a>页面系统怎么构建</h2><p><code>Page</code> 不是一个简单的名称，它保存父页面、子页面和 UIManager 引用，还定义 <code>on_enter</code>、<code>on_exit</code>、子页面进入退出与 <code>update</code> 生命周期。页面可以查询根节点、深度和路径，也能按路径寻找目标页面。</p><p><code>UIManager</code> 维护根页面和当前页面，负责进入子页、返回父页、按路径跨层跳转和移除页面。我补充 <code>remove_page</code> 时，也处理当前页面被删除后的落点和父子关系，避免导航仍指向已经不存在的对象。</p><p>树形结构适合表达菜单层级，但真实使用中还会跨层跳转。颜色阈值 UI 和复杂菜单示例就是用来验证这些情况：页面进出时状态是否保留，错误路径怎样处理，连续返回能否到达预期页面。</p><h2 id="开源交付不只是一份代码"><a href="#开源交付不只是一份代码" class="headerlink" title="开源交付不只是一份代码"></a>开源交付不只是一份代码</h2><p>其中一次核心调整约新增 356 行、删除 48 行，但最终贡献还包括包目录、两个大型示例、README、CHANGELOG 和版本号。它们和实现一起参与了这套库的构建。</p><p>提交给上游时，我需要考虑原有接口、命名一致性和用户如何迁移。一个功能在我的设备上运行，不代表它已经适合公共库。维护者要能审阅，旧用户要知道变化，新用户也要有可以直接运行的入口。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>当前仓库已经形成组件层、输入管理层、分辨率适配层和页面导航层，能够支撑比单页 Demo 更完整的 MaixPy 应用。</p><p>接下来仍需要更多设备与分辨率测试，也可以继续统一各组件管理器的接口，减少使用者在不同组件之间切换时的认知差异。页面转场和焦点管理目前保持轻量，也要避免为了功能完整引入超出设备承受范围的复杂度。</p><p>这次贡献让我完成的不是某一个控件，而是把一组控件组织成可以复用、安装、导航和阅读的库。对开源项目来说，整体结构、示例和文档同样属于代码设计的一部分。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Python </tag>
+            
+            <tag> MaixPy </tag>
+            
+            <tag> 嵌入式 </tag>
+            
+            <tag> 开源贡献 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>MaixCam 井字棋机器人：视觉、决策与机械控制</title>
+      <link href="/2025/07/14/maixcam-tic-tac-toe-robot/"/>
+      <url>/2025/07/14/maixcam-tic-tac-toe-robot/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/MaixCam_Tic_Tac_Toe_2024">MaixCam_Tic_Tac_Toe_2024</a> 是我为 2024 年电赛 E 题参与设计和构建的井字棋机器人。仓库里的相机视觉、棋盘状态、博弈决策、交互界面和串口控制共同组成一套完整系统，不是只训练了一个棋子检测模型。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>机器人要在真实棋盘上与人对弈。它必须找到棋盘和棋子，判断对手本轮新增或移动了哪颗棋子，计算自己的落点，再控制 XYZ 三轴滑台完成取棋和落子。不同游戏模式还需要在屏幕上选择、显示和复位。</p><p>这里任何一层出错，最后都会表现成“机器人下错了”。视觉识别正确但坐标映射偏了，机械臂仍会落错；Minimax 计算正确但棋盘状态读错，决策也没有意义。因此我从一开始就按感知、状态、决策、控制和交互五部分组织方案。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>相机感知使用传统计算机视觉与 YOLOv5 组合。OpenCV 负责规则明确的棋盘轮廓、透视校正和九宫格定位，YOLO 处理背景变化更大的棋子。模型文件和 MUD 配置随仓库保存，MaixCam 可以直接加载推理。</p><p>感知结果不会直接变成串口命令，而是先转换成统一棋盘数组。<code>BoardChangeDetector</code> 比较前后两次稳定状态，区分新增、移动和无变化；游戏逻辑再根据当前棋局运行 Minimax，输出目标格编号。</p><p>控制层把格子编号映射为滑台坐标，通过 UART 与 XYZ 三轴机构通信。<code>EZGUI.py</code> 提供设备端界面组件，主程序组织模式选择、相机循环、状态显示和整局流程。<code>api_new.py</code>、<code>board_checker_lite.py</code> 则保留视觉和棋盘检查的拆分实现，方便单独调试。</p><p>整个代码架构和模块衔接都有我的参与。我要解决的是从相机画面一直到机械动作的闭环，而不是让某个算法在离线图片上单独运行。</p><h2 id="棋盘和棋子为什么分开识别"><a href="#棋盘和棋子为什么分开识别" class="headerlink" title="棋盘和棋子为什么分开识别"></a>棋盘和棋子为什么分开识别</h2><p>棋盘是规则四边形，适合用 OpenCV 找轮廓、筛选面积和形状，确定四角后做透视变换。校正后的棋盘可以稳定划分成九格，格子中心也有明确几何意义。</p><p>棋子外观和现场背景更容易变化，尤其是棋盘外待抓取的棋子。我把这部分交给 YOLOv5，再将检测框中心映射到棋盘或取棋区域。两类方法的输出最终都转换成同一套位置定义。</p><p>这种组合方便现场排错。棋盘框不稳就检查阈值、轮廓和四角；棋子漏检就检查模型置信度和数据；格子判断错误则单独查看透视后的中心映射。所有问题都塞进一个模型，反而很难在比赛时间内定位。</p><h2 id="状态检测怎么判断移动棋子"><a href="#状态检测怎么判断移动棋子" class="headerlink" title="状态检测怎么判断移动棋子"></a>状态检测怎么判断移动棋子</h2><p>题目要求识别违规移动。单帧只能告诉我“现在每格是什么”，无法说明它从哪里来。<code>BoardChangeDetector</code> 因此保存上一次确认的棋盘，再和当前稳定结果比较。</p><p>如果空格变成某一方棋子，这是普通新增；如果原位置变空、另一位置出现同色棋子，就需要标记为移动；画面没有形成可信变化时，系统保持上一状态，不急着触发下一步。</p><p>这层状态缓冲还能抵抗手部遮挡、曝光变化和机械振动产生的短暂异常帧。机器人处理的是连续过程，不能把每一帧都当成一局全新的棋。</p><h2 id="从-Minimax-到三轴滑台"><a href="#从-Minimax-到三轴滑台" class="headerlink" title="从 Minimax 到三轴滑台"></a>从 Minimax 到三轴滑台</h2><p>井字棋状态空间很小，我使用 Minimax 搜索最佳落点。算法输入标准棋盘数组，输出格子编号，不接触相机坐标和串口细节。</p><p>控制层再完成棋盘格、图像坐标和机械坐标之间的映射，通过 UART 发送取棋、移动和落子指令。GUI 负责模式与状态显示，但不参与落点计算。这样出现偏差时，可以分别检查棋盘识别、决策结果、映射参数和机械执行。</p><p>仓库中仍有根据现场装置标定后写入的坐标参数。这对比赛版本是有效取舍，保证能在固定机位快速运行，但相机或机械结构改变后需要重新调整。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>当前版本已经跑通相机取图、棋盘校正、棋子检测、状态变化判断、Minimax 决策、UART 控制和设备界面这条链路。MaixPy、OpenCV、NumPy、YOLOv5、自写 GUI 和机械通信在同一个主循环里协同工作。</p><p>接下来最值得完善的是标定。可以把参考点选择、映射矩阵计算和参数保存做成独立流程，并为视觉、决策和串口分别保留可回放日志。这样更换机位后不必直接修改主程序。</p><p>这次比赛项目让我确认，机器人系统的准确性来自整条链路。模型只是感知的一部分，状态管理、坐标定义和模块之间的数据边界，同样决定它能不能稳定完成一局棋。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> MaixPy </tag>
+            
+            <tag> OpenCV </tag>
+            
+            <tag> YOLO </tag>
+            
+            <tag> 机器人 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>Scoliosis AI Analysis：从椎体关键点到 Cobb 角</title>
+      <link href="/2025/06/27/scoliosis-ai-analysis/"/>
+      <url>/2025/06/27/scoliosis-ai-analysis/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/Scoliosis-AI-Analysis">Scoliosis-AI-Analysis</a> 是我参与设计和构建的脊柱侧弯辅助分析原型。我的工作覆盖数据转换、模型训练、关键点推理、Cobb 角算法、结果可视化、报告接口和 Gradio 应用，目标是验证一条从 X 光图像到可复核测量结果的完整路径。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>脊柱侧弯评估需要在 X 光图像中确定椎体方向并测量 Cobb 角。人工测量依赖专业经验，重复操作也会产生差异。这个项目尝试自动定位椎体关键点，再用明确的几何方法计算角度，并把测量依据画回图像。</p><p>我没有把目标设成“上传图片后直接给出诊断”。模型输出必须能被检查，角度计算要能追溯，生成式报告也只能整理测量结果。仓库因此更适合作为辅助分析原型和研究验证。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>整套代码按数据、模型、测量、报告和界面组织。</p><p>数据层把原始 <code>.mat</code> 标注转换为 YOLO Pose 格式，将 17 个椎体表示为 68 个关键点，并生成训练、验证、测试拆分和数据集 YAML。<code>train_model.py</code> 负责 YOLOv11-Pose 训练，训练结果、曲线和权重保存在仓库中；<code>yolo_detector.py</code> 封装推理与关键点输出。</p><p>测量层由 <code>Cobb_API_Raw.py</code> 与修正后的 <code>Cobb_API_Fix.py</code> 承担，使用 OpenCV、NumPy 和 SciPy 处理椎体方向、端板线与中心线。<code>Report_API.py</code> 把结构化测量交给兼容接口生成报告。<code>web_ui.py</code> 再用 Gradio 串起上传、推理、测量、可视化和报告。</p><p>这套端到端结构是我在仓库构建中参与完成的。模型只负责找点，医学测量规则和结果呈现由独立模块处理，避免一个黑盒直接给出最终结论。</p><h2 id="数据转换为什么先做回绘检查"><a href="#数据转换为什么先做回绘检查" class="headerlink" title="数据转换为什么先做回绘检查"></a>数据转换为什么先做回绘检查</h2><p>原始 <code>.mat</code> 不能直接用于 Ultralytics 训练。我先对齐图像与标注文件，再按固定顺序写入 68 个关键点，并把坐标归一化到 YOLO Pose 格式。</p><p>这一步容易出现静默错误：文件名错配、椎体顺序颠倒、左右角点交换或归一化越界，都可能让训练正常启动，却一直学不到正确关系。为此我在训练前将转换后的点重新画回 X 光图，抽样检查椎体顺序和落点。</p><p>数据集配置与拆分也由脚本生成，减少手动移动文件造成的不一致。训练输出保留关键点指标、验证预测和权重，便于比较不同阶段结果。</p><h2 id="从关键点到-Cobb-角"><a href="#从关键点到-Cobb-角" class="headerlink" title="从关键点到 Cobb 角"></a>从关键点到 Cobb 角</h2><p>YOLOv11-Pose 输出椎体角点后，几何层计算端板方向并选择候选椎体，再求夹角。我也尝试从椎体中心点拟合脊柱中心线，通过样条曲线观察弯曲趋势。</p><p>端板法与中心线关注的对象不同，不能在没有说明的情况下混成一个数字。界面会把关键点、端板线、拟合曲线和角度画回图像。角度异常时，可以判断是模型点位、椎体选择还是几何计算出了问题。</p><p>这种可视化是系统设计的一部分。用户看到的不应只有一个看似精确的数值，还要看到这个数值使用了哪些椎体和线段。</p><h2 id="报告和-Gradio-如何接入"><a href="#报告和-Gradio-如何接入" class="headerlink" title="报告和 Gradio 如何接入"></a>报告和 Gradio 如何接入</h2><p>Gradio 页面负责组织完整工作流，不承担核心算法。图像上传后先走关键点模型，再调用 Cobb 角模块，最后把结构化结果交给报告 API。报告通过 DeepSeek&#x2F;OpenAI 风格的兼容接口流式输出。</p><p><code>web_ui.py</code> 为部分模块缺失的演示环境保留了模拟 fallback。它能用于检查页面流程，但必须与真实推理明确区分。报告同样不能根据一张图自由补充结论，只能围绕已经计算并可视化的测量数据组织文字。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经完成数据集转换、YOLOv11-Pose 训练、关键点提取、两类曲线与角度计算、标注回绘、报告生成和 Gradio 集成。整个仓库从数据到界面的构建设计都有我的参与。</p><p>当前还不能宣称达到临床精度。接下来需要按数据来源、成像条件和侧弯程度拆分评估，并记录模型版本、关键点和每次角度计算的中间量。演示 fallback 也要增加醒目标识。</p><p>做到这个阶段，我最重视的是可复核性。医学 AI 可以帮助完成重复测量，但每个结果必须能回到图像、关键点和几何依据，不能让完整界面掩盖模型仍然存在的不确定性。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 医学影像 </tag>
+            
+            <tag> YOLOv11-Pose </tag>
+            
+            <tag> 计算机视觉 </tag>
+            
+            <tag> Gradio </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>KanResNet 调制识别：一次关于公平对比的实验</title>
+      <link href="/2024/06/14/kanresnet-modulation-recognition/"/>
+      <url>/2024/06/14/kanresnet-modulation-recognition/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/KanResNet-Modulation-Recognition">KanResNet-Modulation-Recognition</a> 是我参与设计和构建的一套无线信号调制识别实验。项目参考 <a href="https://github.com/isaaccorley/pytorch-modulation-recognition">isaaccorley&#x2F;pytorch-modulation-recognition</a> 的训练流程，并使用 <a href="https://github.com/IvanDrokin/torch-conv-kan">IvanDrokin&#x2F;torch-conv-kan</a> 的 KAN 卷积实现。在这些基础上，我把数据、ResNet&#x2F;KanResNet、训练、评估、预测和交互界面组织成可比较的完整仓库。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>调制识别需要根据 I&#x2F;Q 信号判断调制方式。RadioML2016.10a 同时包含多种调制类别和不同信噪比，低 SNR 下有效特征容易被噪声淹没。</p><p>我想验证引入 KAN 卷积后的 KanResNet 在这项任务中会有什么表现，但只训练一个新模型无法说明问题。必须保留一个稳定 ResNet 基线，让两者使用相同数据与训练条件，再按信噪比查看结果。</p><p>因此这个仓库解决的不只是“实现 KanResNet”，还要建立一套公平、可复现并能回到具体样本的对比流程。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p><code>torch_modulation_recognition/data.py</code> 统一读取 RadioML2016.10a、整理 I&#x2F;Q 张量和标签；<code>models.py</code> 定义 ResNet 与 KanResNet；<code>fast_kan_conv.py</code> 封装一维 FastKANConv 与 RBF 计算；<code>metrics.py</code> 放置训练评估指标。</p><p>仓库入口按阶段分开。<code>train.py</code> 负责两种模型训练并保存最终权重，<code>evaluate.py</code> 加载权重并按总体、类别和 SNR 评估，<code>predict.py</code> 提供单样本预测。<code>app_select.py</code> 和 <code>app_mixed.py</code> 使用 Gradio 浏览数据并比较预测结果。</p><p>数据处理、训练、评估和应用共用同一套模型定义，避免实验脚本与演示页面各自复制一份网络。两份权重和准确率随 SNR 变化图也保存在仓库中，便于直接复查输出。</p><p>整个实验结构和模块衔接有我的参与。参考代码提供了基础，我完成的是把它们放进同一个问题定义和比较框架中。</p><h2 id="如何保证-ResNet-与-KanResNet-可比"><a href="#如何保证-ResNet-与-KanResNet-可比" class="headerlink" title="如何保证 ResNet 与 KanResNet 可比"></a>如何保证 ResNet 与 KanResNet 可比</h2><p>我保留 ResNet 作为基线，并让两种模型尽量使用相同的数据拆分、预处理、批大小、训练轮次和评估代码。KanResNet 只在目标卷积位置引入 <code>FastKANConv1D</code> 与 RBF 表示，其余变量尽可能不动。</p><p>训练使用 PyTorch 与 Poutyne 组织，W&amp;B 记录损失、准确率和运行配置。模型结构发生变化时，参数量和训练速度也可能明显不同，因此不能只保存最后一个准确率。</p><p>固定配置还有一个现实作用：某次结果变好时，我可以判断变化来自结构，而不是学习率、随机种子或数据拆分不小心改变。</p><h2 id="为什么评估必须按-SNR-拆开"><a href="#为什么评估必须按-SNR-拆开" class="headerlink" title="为什么评估必须按 SNR 拆开"></a>为什么评估必须按 SNR 拆开</h2><p>RadioML2016.10a 的难度随 SNR 变化很大。把所有样本混在一起算总准确率，会让高 SNR 样本掩盖低 SNR 下的问题。</p><p><code>evaluate.py</code> 因此会按 SNR 计算准确率，并观察类别混淆。一个模型总分稍高，不代表它在真正困难的低信噪比区间更稳定；某个结构也可能只在部分调制类别上有效。</p><p>Gradio 页面让我可以从曲线回到 I&#x2F;Q 样本，查看当前信号的调制类别、SNR 和两个模型的预测。实验指标出现差异时，不会只停留在一条折线，而是继续看模型在哪些信号上分歧。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>当前仓库已经包含统一数据入口、ResNet 与 KanResNet、训练和 W&amp;B 记录、按 SNR 评估、单样本预测及 Gradio 界面，形成了一条完整实验路径。</p><p>我暂时不会把结果概括成“KanResNet 一定更好”。要得到更稳的判断，还需要多个随机种子、重复实验、参数量和耗时对比，并报告各 SNR 区间的波动。</p><p>这次项目让我区分了模型实现和实验设计。把新网络写出来只是起点，基线、变量控制、记录和分组评估才决定对比有没有意义。这也是我在这次构建中最想保留的部分。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> PyTorch </tag>
+            
+            <tag> 调制识别 </tag>
+            
+            <tag> ResNet </tag>
+            
+            <tag> KAN </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>PowerBox：我用 Flet 构建效率工具的第一次尝试</title>
+      <link href="/2023/04/07/powerbox-flet-productivity-tool/"/>
+      <url>/2023/04/07/powerbox-flet-productivity-tool/</url>
+      
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/PowerBox">PowerBox</a> 是我参与设计并完成整体构建的一款效率工具。它使用 Python 和 Flet，把 Todo、番茄钟、倒数日、主题设置和坚果云 WebDAV 同步放进同一个应用。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>我平时需要记录待办、专注时间和重要日期，但不想在几个小工具之间切换。我希望做一个统一入口：打开后可以进入不同功能，数据退出后仍然保留，有需要时还能通过坚果云在不同设备间同步。</p><p>这也是我第一次尝试把一个应用从界面做到本地存储和网络同步。三个功能需要共享主页、设置、生命周期和数据目录，作为同一个应用运行。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>应用以 Flet 为 UI 框架。<code>main.py</code> 和 <code>web.py</code> 提供启动入口与应用外壳，<code>HomepageButton</code> 组成主页导航，<code>AnimatedSwitcher</code> 在主页、Todo、番茄钟和倒数日之间切换。设置对话框管理主题、坚果云账号与同步操作。</p><p>三个业务模块各自独立：<code>todo.py</code> 定义任务与任务列表，<code>pomo.py</code> 负责计时、暂停、继续和统计，<code>countdown.py</code> 管理日期任务，<code>datePicker.py</code> 提供日期选择。各模块实现自己的 <code>load()</code> 与 <code>save()</code>，外壳在进入、返回和关闭时统一调用。</p><p>数据层没有引入数据库，而是在 <code>data</code> 目录保存 <code>todo.json</code>、<code>pomo.json</code>、<code>countdown.json</code> 和 <code>settings.json</code>。WebDAV 层把这四个文件上传到坚果云或从云端下载。字体、提示音和图标放在 <code>assets</code> 中，由 Flet 应用统一加载。</p><p>这套模块划分、页面切换和数据流是我参与整仓构建的一部分，三个功能从入口开始就按同一个应用组织。</p><h2 id="三个模块如何管理状态"><a href="#三个模块如何管理状态" class="headerlink" title="三个模块如何管理状态"></a>三个模块如何管理状态</h2><p>Todo 中，<code>Task</code> 负责单条任务的显示、编辑、完成和删除，<code>TodoApp</code> 管理集合、筛选和剩余数量。任务以名称和完成状态写入 JSON，加载时再恢复成控件。</p><p>倒数日采用相似结构，但状态变成名称和目标日期。模块根据当前日期计算剩余或已经过去的天数，并支持全部、正数日和倒数日筛选。</p><p>番茄钟状态更复杂。<code>tmclock</code> 保存工作或休息阶段、计时长度、暂停状态和累计数据。后台线程负责读秒，<code>threading.Event</code> 用于暂停与继续；页面退出或程序关闭时，外壳向计时模块发送停止信号，避免线程留在后台。</p><p>这种拆分让主页不需要理解任务或计时细节，只负责页面生命周期。三个模块的数据也不会互相覆盖。</p><h2 id="WebDAV-同步怎么接进应用"><a href="#WebDAV-同步怎么接进应用" class="headerlink" title="WebDAV 同步怎么接进应用"></a>WebDAV 同步怎么接进应用</h2><p>应用通过 <code>easywebdav</code> 连接坚果云。登录成功后可以从云端覆盖本地数据；退出程序时，如果网络可用，则上传最新 JSON。第一次连接还会创建远端 <code>powerbox</code> 目录和检查文件。</p><p>我遇到过断网状态下已登录用户无法正常关闭的问题，于是在关闭事件中先检测坚果云地址，只有网络可用才执行远端删除与上传，然后销毁窗口。这个处理先保证了离线时应用仍能退出。</p><p>当前同步采用四个文件整份覆盖，没有做多端冲突合并。它满足我当时的单用户使用方式，但两台设备同时修改时，后上传的一方会覆盖之前数据。账号和应用密码也写入 <code>settings.json</code>，适合个人实验，不适合进一步分发。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>PowerBox 已经把 Flet 页面、三个功能模块、后台计时、JSON 持久化、设置与 WebDAV 同步接成完整应用。运行时产生的数据由程序自动初始化，用户可以在一个窗口中完成主要操作。</p><p>下一步需要优先改进同步与计时。WebDAV 数据应加入版本或更新时间，上传可以先写临时文件再替换；凭据不应继续明文存储。计时也可以改成记录目标时间，再用当前时间计算剩余量，减少循环休眠带来的累计误差。</p><p>做到这个版本时，我已经碰到一个桌面工具最基本的完整链路：界面不是全部，页面状态、后台线程、本地文件、网络异常和关闭流程都要一起工作。PowerBox 的实现还很直接，但它确实是我从整体上构建出来的第一个应用之一。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Python </tag>
+            
+            <tag> Flet </tag>
+            
+            <tag> WebDAV </tag>
+            
+            <tag> 效率工具 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>《大国的兴衰》读书笔记</title>
       <link href="/2022/12/30/rise-and-fall-of-great-powers/"/>
       <url>/2022/12/30/rise-and-fall-of-great-powers/</url>

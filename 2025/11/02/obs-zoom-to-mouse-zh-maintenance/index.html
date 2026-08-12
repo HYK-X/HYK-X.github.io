@@ -1,0 +1,526 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护 | Study-HYK</title><meta name="author" content="HYK"><meta name="copyright" content="HYK"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="obs-zoom-to-mouse-zh Fork 自 BlankSourceCode&#x2F;obs-zoom-to-mouse。我基于上游的核心思路参与了当前中文版本整套脚本的整理与构建，并参考 fixajteknik 的方案处理新版本 OBS 兼容问题。 这个仓库要解决什么问题录制软件操作或代码讲解时，完整桌面里的文字往往太小。这个脚本需要在 OBS 中根据鼠标位置放大显示器捕获画面，并平">
+<meta property="og:type" content="article">
+<meta property="og:title" content="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护">
+<meta property="og:url" content="https://learn.hykpromax.top/2025/11/02/obs-zoom-to-mouse-zh-maintenance/index.html">
+<meta property="og:site_name" content="Study-HYK">
+<meta property="og:description" content="obs-zoom-to-mouse-zh Fork 自 BlankSourceCode&#x2F;obs-zoom-to-mouse。我基于上游的核心思路参与了当前中文版本整套脚本的整理与构建，并参考 fixajteknik 的方案处理新版本 OBS 兼容问题。 这个仓库要解决什么问题录制软件操作或代码讲解时，完整桌面里的文字往往太小。这个脚本需要在 OBS 中根据鼠标位置放大显示器捕获画面，并平">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://learn.hykpromax.top/defaultpic/default11.webp">
+<meta property="article:published_time" content="2025-11-01T19:56:37.000Z">
+<meta property="article:modified_time" content="2025-11-01T19:56:37.000Z">
+<meta property="article:author" content="HYK">
+<meta property="article:tag" content="Lua">
+<meta property="article:tag" content="OBS">
+<meta property="article:tag" content="开源">
+<meta property="article:tag" content="脚本开发">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://learn.hykpromax.top/defaultpic/default11.webp"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护",
+  "url": "https://learn.hykpromax.top/2025/11/02/obs-zoom-to-mouse-zh-maintenance/",
+  "image": "https://learn.hykpromax.top/defaultpic/default11.webp",
+  "datePublished": "2025-11-01T19:56:37.000Z",
+  "dateModified": "2025-11-01T19:56:37.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "HYK",
+      "url": "https://learn.hykpromax.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="https://s2.loli.net/2022/12/08/SkKbjJ7g9uHvtXh.png"><link rel="canonical" href="https://learn.hykpromax.top/2025/11/02/obs-zoom-to-mouse-zh-maintenance/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.2.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"简"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css" media="defer" onload="this.media='all'"><link rel="stylesheet" href="/css/runtime.css" media="print" onload="this.media='all'"><meta name="generator" content="Hexo 8.1.2"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(https://s2.loli.net/2022/12/08/rc6EaYs2kgwXHVZ.webp);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">29</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">50</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/defaultpic/default11.webp);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Study-HYK</span></a><a class="nav-page-title" href="/"><span class="site-name">obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-11-01T19:56:37.000Z" title="发表于 2025-11-02 03:56:37">2025-11-02</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-11-01T19:56:37.000Z" title="更新于 2025-11-02 03:56:37">2025-11-02</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%A4%8D%E7%9B%98/">项目复盘</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.3k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>3分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p><a target="_blank" rel="noopener" href="https://github.com/HYK-X/obs-zoom-to-mouse-zh">obs-zoom-to-mouse-zh</a> Fork 自 <a target="_blank" rel="noopener" href="https://github.com/BlankSourceCode/obs-zoom-to-mouse">BlankSourceCode&#x2F;obs-zoom-to-mouse</a>。我基于上游的核心思路参与了当前中文版本整套脚本的整理与构建，并参考 <code>fixajteknik</code> 的方案处理新版本 OBS 兼容问题。</p>
+<h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>录制软件操作或代码讲解时，完整桌面里的文字往往太小。这个脚本需要在 OBS 中根据鼠标位置放大显示器捕获画面，并平滑跟随光标；鼠标停下来后还要留出一个安全区域，避免画面一直晃动。</p>
+<p>旧版本已经有基础能力，但中文用户面对的是英文设置和英文文档，而且脚本在 OBS 32.0.2 上出现兼容问题。我的目标因此不是只翻译几行文字，而是交付一份在当前 OBS 中能加载、能配置、能缩放，也能按文档排错的中文版本。</p>
+<h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>这个仓库最终保持得很小：一个约 1299 行的 Lua 主脚本、一份中英双语 README 和一个 GIF 演示。代码全部运行在 OBS Script API 中，不额外引入安装器或后台服务。</p>
+<p>脚本内部按运行职责组织：平台层从 Windows、Linux 或 macOS 获取鼠标和显示器信息；来源层查找当前场景及嵌套场景中的目标源；坐标层计算桌面、来源、场景变换和裁剪后的对应关系；滤镜层创建并更新 Crop&#x2F;Pad；状态层管理放大、缩小和已放大状态；配置层向 OBS 暴露属性、快捷键与保存项。</p>
+<p>我参与整理的是这套完整运行关系，而不是只替换 UI 字符串。脚本从加载、选择来源、计算位置、创建滤镜，到快捷键触发动画和卸载时释放 OBS 对象，需要连成一个生命周期。</p>
+<h2 id="缩放为什么依赖裁剪滤镜"><a href="#缩放为什么依赖裁剪滤镜" class="headerlink" title="缩放为什么依赖裁剪滤镜"></a>缩放为什么依赖裁剪滤镜</h2><p>按下缩放快捷键后，脚本以当前鼠标位置为中心，计算目标裁剪区域，再逐帧改变 Crop&#x2F;Pad 滤镜的宽、高和位置。插值与缓动函数让放大和缩小不会突然跳变。</p>
+<p>自动跟随打开时，鼠标接近放大区域边缘才重新移动画面；鼠标停住后，脚本恢复安全区域。这部分通过 <code>ZoomState</code>、目标区域和计时状态共同控制，不能只用一个“是否放大”的布尔值。</p>
+<p>脚本卸载或切换来源时，还要移除临时滤镜、恢复原始裁剪并释放 OBS source。对象没有正确释放，重新加载脚本后可能出现重复滤镜或失效引用。</p>
+<h2 id="坐标和来源兼容是主要难点"><a href="#坐标和来源兼容是主要难点" class="headerlink" title="坐标和来源兼容是主要难点"></a>坐标和来源兼容是主要难点</h2><p>鼠标位置属于整个桌面，OBS 中的来源却可能被缩放、裁剪或放在嵌套场景里。脚本需要读取来源原始尺寸、场景变换、显示器位置和缩放系数，再把桌面坐标换到目标源上。</p>
+<p>Windows、Linux 与 macOS 获取显示器信息的方式也不一样。显示器排列、主屏切换、方向和系统缩放发生变化后，旧的捕获源信息可能失效。对于普通显示器捕获，脚本尽量自动计算；对于浏览器源、克隆源等非显示器来源，则提供手动位置、尺寸和缩放参数。</p>
+<p>OBS 32.0.2 的兼容修复也发生在这条链路中。我的排查顺序是先确认来源能被正确找到，再检查原始尺寸和 scene item 变换，最后核对裁剪滤镜与鼠标映射。直接调缩放倍率只能掩盖坐标问题。</p>
+<h2 id="中文化和文档怎么一起做"><a href="#中文化和文档怎么一起做" class="headerlink" title="中文化和文档怎么一起做"></a>中文化和文档怎么一起做</h2><p>脚本设置、提示和日志完成中文化后，我重新整理了约 232 行中英双语 README，包含安装步骤、推荐的显示器捕获设置、快捷键、手动坐标、双机支持和已知限制。约 12 MB 的 GIF 直接展示最终效果。</p>
+<p>之所以保留双语，是因为仓库仍然继承上游使用方式，英文读者也能核对原始概念。文档还明确说明 transform crop 与 Crop&#x2F;Pad Filter 的区别，避免脚本自动修改布局后用户不知道发生了什么。</p>
+<h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经把 OBS 32.0.2 兼容、跨平台坐标、来源查找、滤镜生命周期、中文界面和使用文档整理为可直接加载的脚本。</p>
+<p>当前限制也很明确：自动计算主要针对显示器捕获，非显示器源需要手动输入；桌面布局变化后通常要重建捕获源并重载脚本。复杂嵌套场景和系统缩放仍需要更多环境验证。</p>
+<p>这次维护让我认识到，汉化项目同样包含完整的工程设计。语言只是用户能看到的一层，底下还要处理宿主 API、对象生命周期、坐标系统和安装说明，版本才能真正可用。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top">HYK</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top/2025/11/02/obs-zoom-to-mouse-zh-maintenance/">https://learn.hykpromax.top/2025/11/02/obs-zoom-to-mouse-zh-maintenance/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://learn.hykpromax.top" target="_blank">Study-HYK</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/defaultpic/default11.webp" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/01/27/ai-psyc-project-fullstack-notes/" title="AI_Psyc_Project：本地模型接入与前后端状态处理"><img class="cover" src="/defaultpic/default9%20.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post" loading='lazy'><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">AI_Psyc_Project：本地模型接入与前后端状态处理</div></div><div class="info-2"><div class="info-item-1">AI_Psyc_Project 是一个私有 Fork 项目。上游提供了初始基础，我参与了当前仓库整套应用的构建设计，并在后续 7 次提交中完成本地模式、模型服务衔接、认证、进度与前后端合并。这里不展开业务数据、提示词和私有模型配置。 这个仓库要解决什么问题项目要把 AI 对话、语音输入、语音输出、过程评估和报告生成放进同一个应用，同时允许使用在线模型与本地模型。除了普通用户的访谈流程，还需要登录、数据保存和管理界面。 难点在于这些能力来自不同运行环境。浏览器负责录音和交互，Next.js 负责页面与服务调用，PocketBase 负责认证和数据，本地 Python 后端还要运行 STT、LLM、TTS 与视觉服务。只把每个接口分别接通，整个访谈仍然可能在模式切换、连接中断或页面刷新时失去状态。 我采用的整体方案我参与把仓库组织为本地 AI 后端、Next.js 前端和 PocketBase 三部分。 FastAPI 后端在启动时初始化 VisionService、STTService、ToneService、BrainService 和 MouthService，分别处理视觉、语...</div></div></div></a><a class="pagination-related" href="/2025/07/24/maixpy-ui-lib-open-source-contribution/" title="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系"><img class="cover" src="/defaultpic/default5.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post" loading='lazy'><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系</div></div><div class="info-2"><div class="info-item-1">MaixPy-UI-Lib 是我基于 aristorechina&#x2F;MaixPy-UI-Lib 参与继续构建的轻量级 UI 库。我的工作覆盖组件组织、分辨率适配、页面系统、包结构、示例和文档，其中多项修改通过 PR #2、PR #4 和 PR #7 合并到上游。 这个仓库要解决什么问题MaixPy 设备可以直接在图像上绘制界面，但项目一复杂，按钮命中、滑块状态、页面切换和不同分辨率会反复出现。如果每个应用都在主循环里手写坐标判断，UI 代码很快会和视觉算法、相机处理混在一起。 这个仓库要提供一套适合嵌入式环境的基础 UI：组件足够轻，能够直接绘制到图像；输入事件由管理器统一分发；多页面应用有清楚的进入、退出和返回规则；在不同屏幕尺寸上还能复用同一套设计坐标。 我采用的整体方案我参与把代码整理成标准 src/maixpy_ui 包。components 下分别放按钮、滑块、开关、复选框和单选框，每类组件都有对应管理器；core/resolution_adapter.py 负责设计分辨率到设备分辨率的换算；core/ui_manager.py 定义 Page 与 UIMana...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="author-info-name">HYK</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">29</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">50</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/HYK-X" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://space.bilibili.com/161889615" target="_blank" title="BiliBili"><i class="fab fa-bilibili"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">爱人工智能，爱欣然，爱猫羽雫</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%99%E4%B8%AA%E4%BB%93%E5%BA%93%E8%A6%81%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">这个仓库要解决什么问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%91%E9%87%87%E7%94%A8%E7%9A%84%E6%95%B4%E4%BD%93%E6%96%B9%E6%A1%88"><span class="toc-number">2.</span> <span class="toc-text">我采用的整体方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%A9%E6%94%BE%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BE%9D%E8%B5%96%E8%A3%81%E5%89%AA%E6%BB%A4%E9%95%9C"><span class="toc-number">3.</span> <span class="toc-text">缩放为什么依赖裁剪滤镜</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9D%90%E6%A0%87%E5%92%8C%E6%9D%A5%E6%BA%90%E5%85%BC%E5%AE%B9%E6%98%AF%E4%B8%BB%E8%A6%81%E9%9A%BE%E7%82%B9"><span class="toc-number">4.</span> <span class="toc-text">坐标和来源兼容是主要难点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%AD%E6%96%87%E5%8C%96%E5%92%8C%E6%96%87%E6%A1%A3%E6%80%8E%E4%B9%88%E4%B8%80%E8%B5%B7%E5%81%9A"><span class="toc-number">5.</span> <span class="toc-text">中文化和文档怎么一起做</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%AA%E8%87%B3%E8%BF%99%E6%AC%A1%E6%8F%90%E4%BA%A4%E7%9A%84%E5%A4%8D%E7%9B%98"><span class="toc-number">6.</span> <span class="toc-text">截至这次提交的复盘</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的"><img src="/defaultpic/default5.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Hexo 本地源码丢了以后，我是怎么把博客救回来的"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的">Hexo 本地源码丢了以后，我是怎么把博客救回来的</a><time datetime="2026-08-06T10:10:00.000Z" title="发表于 2026-08-06 18:10:00">2026-08-06</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践"><img src="/defaultpic/default7.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CAD_Converter：从图纸转换到 AI 分析的工程实践"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践">CAD_Converter：从图纸转换到 AI 分析的工程实践</a><time datetime="2026-03-14T05:01:39.000Z" title="发表于 2026-03-14 13:01:39">2026-03-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/01/27/ai-psyc-project-fullstack-notes/" title="AI_Psyc_Project：本地模型接入与前后端状态处理"><img src="/defaultpic/default9%20.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI_Psyc_Project：本地模型接入与前后端状态处理"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/01/27/ai-psyc-project-fullstack-notes/" title="AI_Psyc_Project：本地模型接入与前后端状态处理">AI_Psyc_Project：本地模型接入与前后端状态处理</a><time datetime="2026-01-27T12:49:05.000Z" title="发表于 2026-01-27 20:49:05">2026-01-27</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/11/02/obs-zoom-to-mouse-zh-maintenance/" title="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护"><img src="/defaultpic/default11.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护"/ loading='lazy'></a><div class="content"><a class="title" href="/2025/11/02/obs-zoom-to-mouse-zh-maintenance/" title="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护">obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护</a><time datetime="2025-11-01T19:56:37.000Z" title="发表于 2025-11-02 03:56:37">2025-11-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/07/24/maixpy-ui-lib-open-source-contribution/" title="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系"><img src="/defaultpic/default5.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系"/ loading='lazy'></a><div class="content"><a class="title" href="/2025/07/24/maixpy-ui-lib-open-source-contribution/" title="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系">MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系</a><time datetime="2025-07-24T15:22:12.000Z" title="发表于 2025-07-24 23:22:12">2025-07-24</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2022 - 2026 By HYK</span></div><div class="footer_custom_text"><div id="workboard"></div>
+<p id="ghbdages">
+  <a class="github-badge" target="_blank" href="https://hexo.io/" style="margin-inline:5px" data-title="博客框架为Hexo_v8.1.2" title=""><img src="https://img.shields.io/badge/Frame-Hexo-blue?style=flat&logo=hexo" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://butterfly.js.org/" style="margin-inline:5px" data-title="主题版本Butterfly_v5.5.5" title=""><img src="https://img.shields.io/badge/Theme-Butterfly-6513df?style=flat&logo=bitdefender" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://vercel.com/" style="margin-inline:5px" data-title="本站采用多线部署，主线路托管于Vercel" title=""><img src="https://img.shields.io/badge/Hosted-Vercel-brightgreen?style=flat&logo=Vercel" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://dashboard.4everland.org/" style="margin-inline:5px" data-title="本站采用多线部署，备用线路托管于4EVERLAND" title=""><img src="https://img.shields.io/badge/Hosted-4EVERLAND-22DDDD?style=flat&logo=IPFS" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://github.com/" style="margin-inline:5px" data-title="本站项目由Github托管" title=""><img src="https://img.shields.io/badge/Source-Github-d021d6?style=flat&logo=GitHub" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/" style="margin-inline:5px" data-title="本站采用知识共享署名-非商业性使用-相同方式共享4.0国际许可协议进行许可" title=""><img src="https://img.shields.io/badge/Copyright-BY--NC--SA%204.0-d42328?style=flat&logo=Claris" alt="" loading='lazy'></a>
+</p>
+</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5"></script><script src="/js/main.js?v=5.5.5"></script><script src="/js/tw_cn.js?v=5.5.5"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><div class="js-pjax"><script>(async () => {
+  const showKatex = () => {
+    document.querySelectorAll('#article-container .katex').forEach(el => el.classList.add('katex-show'))
+  }
+
+  if (!window.katex_js_css) {
+    window.katex_js_css = true
+    await btf.getCSS('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css')
+    if (true) {
+      await btf.getScript('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/copy-tex.min.js')
+    }
+  }
+
+  showKatex()
+})()</script><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.outerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        if (typeof svg === 'string') {
+          openSvgInNewTab({ source: svg, initViewBox })
+          return
+        }
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+
+    // Avoid binding multiple times on themeChange/pjax
+    if (wrap.__mermaidGestureBound) return
+    wrap.__mermaidGestureBound = true
+
+    // Helper: map client (viewport) coordinate -> viewBox coordinate
+    const clientToViewBox = (clientX, clientY) => {
+      const rect = svg.getBoundingClientRect()
+      const vb = wrap.__mermaidCurViewBox || getSvgViewBox(svg)
+      const x = vb[0] + (clientX - rect.left) * (vb[2] / rect.width)
+      const y = vb[1] + (clientY - rect.top) * (vb[3] / rect.height)
+      return { x, y, rect, vb }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      startCenter: null
+    }
+
+    const clampVb = vb => {
+      const init = wrap.__mermaidInitViewBox || vb
+      const minW = init[2] * 0.1
+      const maxW = init[2] * 10
+      const minH = init[3] * 0.1
+      const maxH = init[3] * 10
+      vb[2] = clamp(vb[2], minW, maxW)
+      vb[3] = clamp(vb[3], minH, maxH)
+      return vb
+    }
+
+    const setCurVb = vb => {
+      vb = clampVb(vb)
+      wrap.__mermaidCurViewBox = vb
+      setSvgViewBox(svg, vb)
+    }
+
+    const onPointerDown = e => {
+      // Allow only primary button for mouse
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      if (state.pointers.size === 1) {
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        state.startCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      // Pan with 1 pointer
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = [...state.pointers.values()][0]
+        const prev = { x: e.clientX - e.movementX, y: e.clientY - e.movementY }
+        // movementX/Y unreliable on touch, compute from stored last position
+        const last = wrap.__mermaidLastSinglePointer || p
+        const dxClient = p.x - last.x
+        const dyClient = p.y - last.y
+        wrap.__mermaidLastSinglePointer = p
+
+        const { rect } = clientToViewBox(p.x, p.y)
+        const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        const dx = dxClient * (vb[2] / rect.width)
+        const dy = dyClient * (vb[3] / rect.height)
+        setCurVb([vb[0] - dx, vb[1] - dy, vb[2], vb[3]])
+        return
+      }
+
+      // Pinch zoom with 2 pointers
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist // dist bigger => zoom in (viewBox smaller)
+
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const centerClient = { x: cx, y: cy }
+
+        const pxy = clientToViewBox(centerClient.x, centerClient.y)
+        const cpx = pxy.x
+        const cpy = pxy.y
+
+        const vb = zoomAtPoint(state.startVb, factor, cpx, cpy)
+        setCurVb(vb)
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+        state.startCenter = null
+        wrap.__mermaidLastSinglePointer = null
+      } else if (state.pointers.size === 1) {
+        // reset single pointer baseline to avoid jump
+        wrap.__mermaidLastSinglePointer = [...state.pointers.values()][0]
+      }
+    }
+
+    // Wheel zoom (mouse/trackpad)
+    const onWheel = e => {
+      // ctrlKey on mac trackpad pinch; we treat both as zoom
+      e.preventDefault()
+      const delta = e.deltaY
+      const zoomFactor = delta > 0 ? 1.1 : 0.9
+      const { x, y } = clientToViewBox(e.clientX, e.clientY)
+      const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      setCurVb(zoomAtPoint(vb, zoomFactor, x, y))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (!init) return
+      wrap.__mermaidCurViewBox = init.slice()
+      setSvgViewBox(svg, init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown)
+    svg.addEventListener('pointermove', onPointerMove)
+    svg.addEventListener('pointerup', onPointerUpOrCancel)
+    svg.addEventListener('pointercancel', onPointerUpOrCancel)
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    svg.addEventListener('dblclick', onDblClick)
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'neutral'
+
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+
+      // Clear old render (themeChange/pjax will rerun)
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      item.__mermaidGestureBound = false
+
+      const config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (true) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (true) attachMermaidViewerButton(item)
+      }
+
+
+      // mermaid v9 and v10 compatibility
+      typeof renderFn === 'string' ? renderMermaid(renderFn) : renderFn.then(({ svg }) => renderMermaid(svg))
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async src="/js/runtime.js"></script><script async src="/js/hitokoto-typed.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="30" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.5"></script></div></div></body></html>

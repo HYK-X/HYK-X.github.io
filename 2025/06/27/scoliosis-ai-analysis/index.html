@@ -1,0 +1,527 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Scoliosis AI Analysis：从椎体关键点到 Cobb 角 | Study-HYK</title><meta name="author" content="HYK"><meta name="copyright" content="HYK"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Scoliosis-AI-Analysis 是我参与设计和构建的脊柱侧弯辅助分析原型。我的工作覆盖数据转换、模型训练、关键点推理、Cobb 角算法、结果可视化、报告接口和 Gradio 应用，目标是验证一条从 X 光图像到可复核测量结果的完整路径。 这个仓库要解决什么问题脊柱侧弯评估需要在 X 光图像中确定椎体方向并测量 Cobb 角。人工测量依赖专业经验，重复操作也会产生差异。这个项目尝试自动定">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Scoliosis AI Analysis：从椎体关键点到 Cobb 角">
+<meta property="og:url" content="https://learn.hykpromax.top/2025/06/27/scoliosis-ai-analysis/index.html">
+<meta property="og:site_name" content="Study-HYK">
+<meta property="og:description" content="Scoliosis-AI-Analysis 是我参与设计和构建的脊柱侧弯辅助分析原型。我的工作覆盖数据转换、模型训练、关键点推理、Cobb 角算法、结果可视化、报告接口和 Gradio 应用，目标是验证一条从 X 光图像到可复核测量结果的完整路径。 这个仓库要解决什么问题脊柱侧弯评估需要在 X 光图像中确定椎体方向并测量 Cobb 角。人工测量依赖专业经验，重复操作也会产生差异。这个项目尝试自动定">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://learn.hykpromax.top/defaultpic/default9%20.webp">
+<meta property="article:published_time" content="2025-06-27T04:07:03.000Z">
+<meta property="article:modified_time" content="2025-06-27T04:07:03.000Z">
+<meta property="article:author" content="HYK">
+<meta property="article:tag" content="Gradio">
+<meta property="article:tag" content="YOLOv11-Pose">
+<meta property="article:tag" content="医学影像">
+<meta property="article:tag" content="计算机视觉">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://learn.hykpromax.top/defaultpic/default9%20.webp"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Scoliosis AI Analysis：从椎体关键点到 Cobb 角",
+  "url": "https://learn.hykpromax.top/2025/06/27/scoliosis-ai-analysis/",
+  "image": "https://learn.hykpromax.top/defaultpic/default9%20.webp",
+  "datePublished": "2025-06-27T04:07:03.000Z",
+  "dateModified": "2025-06-27T04:07:03.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "HYK",
+      "url": "https://learn.hykpromax.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="https://s2.loli.net/2022/12/08/SkKbjJ7g9uHvtXh.png"><link rel="canonical" href="https://learn.hykpromax.top/2025/06/27/scoliosis-ai-analysis/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.2.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"简"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Scoliosis AI Analysis：从椎体关键点到 Cobb 角',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css" media="defer" onload="this.media='all'"><link rel="stylesheet" href="/css/runtime.css" media="print" onload="this.media='all'"><meta name="generator" content="Hexo 8.1.2"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(https://s2.loli.net/2022/12/08/rc6EaYs2kgwXHVZ.webp);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">29</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">50</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/defaultpic/default9%20.webp);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Study-HYK</span></a><a class="nav-page-title" href="/"><span class="site-name">Scoliosis AI Analysis：从椎体关键点到 Cobb 角</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Scoliosis AI Analysis：从椎体关键点到 Cobb 角</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-06-27T04:07:03.000Z" title="发表于 2025-06-27 12:07:03">2025-06-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-06-27T04:07:03.000Z" title="更新于 2025-06-27 12:07:03">2025-06-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%A4%8D%E7%9B%98/">项目复盘</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.2k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>3分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p><a target="_blank" rel="noopener" href="https://github.com/HYK-X/Scoliosis-AI-Analysis">Scoliosis-AI-Analysis</a> 是我参与设计和构建的脊柱侧弯辅助分析原型。我的工作覆盖数据转换、模型训练、关键点推理、Cobb 角算法、结果可视化、报告接口和 Gradio 应用，目标是验证一条从 X 光图像到可复核测量结果的完整路径。</p>
+<h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>脊柱侧弯评估需要在 X 光图像中确定椎体方向并测量 Cobb 角。人工测量依赖专业经验，重复操作也会产生差异。这个项目尝试自动定位椎体关键点，再用明确的几何方法计算角度，并把测量依据画回图像。</p>
+<p>我没有把目标设成“上传图片后直接给出诊断”。模型输出必须能被检查，角度计算要能追溯，生成式报告也只能整理测量结果。仓库因此更适合作为辅助分析原型和研究验证。</p>
+<h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>整套代码按数据、模型、测量、报告和界面组织。</p>
+<p>数据层把原始 <code>.mat</code> 标注转换为 YOLO Pose 格式，将 17 个椎体表示为 68 个关键点，并生成训练、验证、测试拆分和数据集 YAML。<code>train_model.py</code> 负责 YOLOv11-Pose 训练，训练结果、曲线和权重保存在仓库中；<code>yolo_detector.py</code> 封装推理与关键点输出。</p>
+<p>测量层由 <code>Cobb_API_Raw.py</code> 与修正后的 <code>Cobb_API_Fix.py</code> 承担，使用 OpenCV、NumPy 和 SciPy 处理椎体方向、端板线与中心线。<code>Report_API.py</code> 把结构化测量交给兼容接口生成报告。<code>web_ui.py</code> 再用 Gradio 串起上传、推理、测量、可视化和报告。</p>
+<p>这套端到端结构是我在仓库构建中参与完成的。模型只负责找点，医学测量规则和结果呈现由独立模块处理，避免一个黑盒直接给出最终结论。</p>
+<h2 id="数据转换为什么先做回绘检查"><a href="#数据转换为什么先做回绘检查" class="headerlink" title="数据转换为什么先做回绘检查"></a>数据转换为什么先做回绘检查</h2><p>原始 <code>.mat</code> 不能直接用于 Ultralytics 训练。我先对齐图像与标注文件，再按固定顺序写入 68 个关键点，并把坐标归一化到 YOLO Pose 格式。</p>
+<p>这一步容易出现静默错误：文件名错配、椎体顺序颠倒、左右角点交换或归一化越界，都可能让训练正常启动，却一直学不到正确关系。为此我在训练前将转换后的点重新画回 X 光图，抽样检查椎体顺序和落点。</p>
+<p>数据集配置与拆分也由脚本生成，减少手动移动文件造成的不一致。训练输出保留关键点指标、验证预测和权重，便于比较不同阶段结果。</p>
+<h2 id="从关键点到-Cobb-角"><a href="#从关键点到-Cobb-角" class="headerlink" title="从关键点到 Cobb 角"></a>从关键点到 Cobb 角</h2><p>YOLOv11-Pose 输出椎体角点后，几何层计算端板方向并选择候选椎体，再求夹角。我也尝试从椎体中心点拟合脊柱中心线，通过样条曲线观察弯曲趋势。</p>
+<p>端板法与中心线关注的对象不同，不能在没有说明的情况下混成一个数字。界面会把关键点、端板线、拟合曲线和角度画回图像。角度异常时，可以判断是模型点位、椎体选择还是几何计算出了问题。</p>
+<p>这种可视化是系统设计的一部分。用户看到的不应只有一个看似精确的数值，还要看到这个数值使用了哪些椎体和线段。</p>
+<h2 id="报告和-Gradio-如何接入"><a href="#报告和-Gradio-如何接入" class="headerlink" title="报告和 Gradio 如何接入"></a>报告和 Gradio 如何接入</h2><p>Gradio 页面负责组织完整工作流，不承担核心算法。图像上传后先走关键点模型，再调用 Cobb 角模块，最后把结构化结果交给报告 API。报告通过 DeepSeek&#x2F;OpenAI 风格的兼容接口流式输出。</p>
+<p><code>web_ui.py</code> 为部分模块缺失的演示环境保留了模拟 fallback。它能用于检查页面流程，但必须与真实推理明确区分。报告同样不能根据一张图自由补充结论，只能围绕已经计算并可视化的测量数据组织文字。</p>
+<h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经完成数据集转换、YOLOv11-Pose 训练、关键点提取、两类曲线与角度计算、标注回绘、报告生成和 Gradio 集成。整个仓库从数据到界面的构建设计都有我的参与。</p>
+<p>当前还不能宣称达到临床精度。接下来需要按数据来源、成像条件和侧弯程度拆分评估，并记录模型版本、关键点和每次角度计算的中间量。演示 fallback 也要增加醒目标识。</p>
+<p>做到这个阶段，我最重视的是可复核性。医学 AI 可以帮助完成重复测量，但每个结果必须能回到图像、关键点和几何依据，不能让完整界面掩盖模型仍然存在的不确定性。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top">HYK</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top/2025/06/27/scoliosis-ai-analysis/">https://learn.hykpromax.top/2025/06/27/scoliosis-ai-analysis/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://learn.hykpromax.top" target="_blank">Study-HYK</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/defaultpic/default9%20.webp" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2025/07/14/maixcam-tic-tac-toe-robot/" title="MaixCam 井字棋机器人：视觉、决策与机械控制"><img class="cover" src="/defaultpic/default7.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post" loading='lazy'><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">MaixCam 井字棋机器人：视觉、决策与机械控制</div></div><div class="info-2"><div class="info-item-1">MaixCam_Tic_Tac_Toe_2024 是我为 2024 年电赛 E 题参与设计和构建的井字棋机器人。仓库里的相机视觉、棋盘状态、博弈决策、交互界面和串口控制共同组成一套完整系统，不是只训练了一个棋子检测模型。 这个仓库要解决什么问题机器人要在真实棋盘上与人对弈。它必须找到棋盘和棋子，判断对手本轮新增或移动了哪颗棋子，计算自己的落点，再控制 XYZ 三轴滑台完成取棋和落子。不同游戏模式还需要在屏幕上选择、显示和复位。 这里任何一层出错，最后都会表现成“机器人下错了”。视觉识别正确但坐标映射偏了，机械臂仍会落错；Minimax 计算正确但棋盘状态读错，决策也没有意义。因此我从一开始就按感知、状态、决策、控制和交互五部分组织方案。 我采用的整体方案相机感知使用传统计算机视觉与 YOLOv5 组合。OpenCV 负责规则明确的棋盘轮廓、透视校正和九宫格定位，YOLO 处理背景变化更大的棋子。模型文件和 MUD 配置随仓库保存，MaixCam 可以直接加载推理。 感知结果不会直接变成串口命令，而是先转换成统一棋盘数组。BoardChangeDetector 比较前后两次稳定状态...</div></div></div></a><a class="pagination-related" href="/2024/06/14/kanresnet-modulation-recognition/" title="KanResNet 调制识别：一次关于公平对比的实验"><img class="cover" src="/defaultpic/default11.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post" loading='lazy'><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">KanResNet 调制识别：一次关于公平对比的实验</div></div><div class="info-2"><div class="info-item-1">KanResNet-Modulation-Recognition 是我参与设计和构建的一套无线信号调制识别实验。项目参考 isaaccorley&#x2F;pytorch-modulation-recognition 的训练流程，并使用 IvanDrokin&#x2F;torch-conv-kan 的 KAN 卷积实现。在这些基础上，我把数据、ResNet&#x2F;KanResNet、训练、评估、预测和交互界面组织成可比较的完整仓库。 这个仓库要解决什么问题调制识别需要根据 I&#x2F;Q 信号判断调制方式。RadioML2016.10a 同时包含多种调制类别和不同信噪比，低 SNR 下有效特征容易被噪声淹没。 我想验证引入 KAN 卷积后的 KanResNet 在这项任务中会有什么表现，但只训练一个新模型无法说明问题。必须保留一个稳定 ResNet 基线，让两者使用相同数据与训练条件，再按信噪比查看结果。 因此这个仓库解决的不只是“实现 KanResNet”，还要建立一套公平、可复现并能回到具体样本的对比流程。 我采用的整体方案torch_modulation_recogn...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践"><img class="cover" src="/defaultpic/default7.webp" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-03-14</div><div class="info-item-2">CAD_Converter：从图纸转换到 AI 分析的工程实践</div></div><div class="info-2"><div class="info-item-1">CAD_Converter 是我参与设计和构建的一套 CAD 图纸处理工具。仓库目前是私有的，这里只记录可以公开的技术方案，不涉及内部图纸、模型配置和接口信息。 这个仓库要解决什么问题项目面对的不是单纯的格式转换，而是一批来源、版本和绘图习惯都不统一的工程图纸。使用者需要先把 DWG 转成可处理的 DXF，再按规则清理图层、文字和颜色，最后导出 PNG、PDF 或 SVG。部分图纸还要继续交给视觉模型分析，从中提取设备与连接关系，并把识别结果标回图中。 如果这些步骤各自做成零散脚本，每换一张图就要手动搬文件、改参数，也很难知道失败发生在哪一步。因此我想把它做成一套有界面、能批量运行、能记录进度，也可以直接打包交付的完整工具。 我采用的整体方案我把仓库分成入口、核心能力、界面页面和交付脚本几层。 src/main.py 负责启动 Qt 应用和处理运行期消息；src/gui/main_window.py 组织主窗口，并把功能拆成“格式转换”“图纸清理”“AI 分析”三个页面。页面只负责收集参数、展示预览和反馈任务状态，真正的处理逻辑放在 src/core。 核心层继续分工：dwg_c...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="author-info-name">HYK</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">29</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">50</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/HYK-X" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://space.bilibili.com/161889615" target="_blank" title="BiliBili"><i class="fab fa-bilibili"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">爱人工智能，爱欣然，爱猫羽雫</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%99%E4%B8%AA%E4%BB%93%E5%BA%93%E8%A6%81%E8%A7%A3%E5%86%B3%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">这个仓库要解决什么问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%91%E9%87%87%E7%94%A8%E7%9A%84%E6%95%B4%E4%BD%93%E6%96%B9%E6%A1%88"><span class="toc-number">2.</span> <span class="toc-text">我采用的整体方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E8%BD%AC%E6%8D%A2%E4%B8%BA%E4%BB%80%E4%B9%88%E5%85%88%E5%81%9A%E5%9B%9E%E7%BB%98%E6%A3%80%E6%9F%A5"><span class="toc-number">3.</span> <span class="toc-text">数据转换为什么先做回绘检查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8E%E5%85%B3%E9%94%AE%E7%82%B9%E5%88%B0-Cobb-%E8%A7%92"><span class="toc-number">4.</span> <span class="toc-text">从关键点到 Cobb 角</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%A5%E5%91%8A%E5%92%8C-Gradio-%E5%A6%82%E4%BD%95%E6%8E%A5%E5%85%A5"><span class="toc-number">5.</span> <span class="toc-text">报告和 Gradio 如何接入</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%AA%E8%87%B3%E8%BF%99%E6%AC%A1%E6%8F%90%E4%BA%A4%E7%9A%84%E5%A4%8D%E7%9B%98"><span class="toc-number">6.</span> <span class="toc-text">截至这次提交的复盘</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的"><img src="/defaultpic/default5.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Hexo 本地源码丢了以后，我是怎么把博客救回来的"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的">Hexo 本地源码丢了以后，我是怎么把博客救回来的</a><time datetime="2026-08-06T10:10:00.000Z" title="发表于 2026-08-06 18:10:00">2026-08-06</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践"><img src="/defaultpic/default7.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CAD_Converter：从图纸转换到 AI 分析的工程实践"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践">CAD_Converter：从图纸转换到 AI 分析的工程实践</a><time datetime="2026-03-14T05:01:39.000Z" title="发表于 2026-03-14 13:01:39">2026-03-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/01/27/ai-psyc-project-fullstack-notes/" title="AI_Psyc_Project：本地模型接入与前后端状态处理"><img src="/defaultpic/default9%20.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI_Psyc_Project：本地模型接入与前后端状态处理"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/01/27/ai-psyc-project-fullstack-notes/" title="AI_Psyc_Project：本地模型接入与前后端状态处理">AI_Psyc_Project：本地模型接入与前后端状态处理</a><time datetime="2026-01-27T12:49:05.000Z" title="发表于 2026-01-27 20:49:05">2026-01-27</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/11/02/obs-zoom-to-mouse-zh-maintenance/" title="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护"><img src="/defaultpic/default11.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护"/ loading='lazy'></a><div class="content"><a class="title" href="/2025/11/02/obs-zoom-to-mouse-zh-maintenance/" title="obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护">obs-zoom-to-mouse-zh：汉化之外的一次 OBS 脚本维护</a><time datetime="2025-11-01T19:56:37.000Z" title="发表于 2025-11-02 03:56:37">2025-11-02</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2025/07/24/maixpy-ui-lib-open-source-contribution/" title="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系"><img src="/defaultpic/default5.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系"/ loading='lazy'></a><div class="content"><a class="title" href="/2025/07/24/maixpy-ui-lib-open-source-contribution/" title="MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系">MaixPy-UI-Lib：我参与构建的嵌入式 UI 组件体系</a><time datetime="2025-07-24T15:22:12.000Z" title="发表于 2025-07-24 23:22:12">2025-07-24</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2022 - 2026 By HYK</span></div><div class="footer_custom_text"><div id="workboard"></div>
+<p id="ghbdages">
+  <a class="github-badge" target="_blank" href="https://hexo.io/" style="margin-inline:5px" data-title="博客框架为Hexo_v8.1.2" title=""><img src="https://img.shields.io/badge/Frame-Hexo-blue?style=flat&logo=hexo" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://butterfly.js.org/" style="margin-inline:5px" data-title="主题版本Butterfly_v5.5.5" title=""><img src="https://img.shields.io/badge/Theme-Butterfly-6513df?style=flat&logo=bitdefender" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://vercel.com/" style="margin-inline:5px" data-title="本站采用多线部署，主线路托管于Vercel" title=""><img src="https://img.shields.io/badge/Hosted-Vercel-brightgreen?style=flat&logo=Vercel" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://dashboard.4everland.org/" style="margin-inline:5px" data-title="本站采用多线部署，备用线路托管于4EVERLAND" title=""><img src="https://img.shields.io/badge/Hosted-4EVERLAND-22DDDD?style=flat&logo=IPFS" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://github.com/" style="margin-inline:5px" data-title="本站项目由Github托管" title=""><img src="https://img.shields.io/badge/Source-Github-d021d6?style=flat&logo=GitHub" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/" style="margin-inline:5px" data-title="本站采用知识共享署名-非商业性使用-相同方式共享4.0国际许可协议进行许可" title=""><img src="https://img.shields.io/badge/Copyright-BY--NC--SA%204.0-d42328?style=flat&logo=Claris" alt="" loading='lazy'></a>
+</p>
+</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5"></script><script src="/js/main.js?v=5.5.5"></script><script src="/js/tw_cn.js?v=5.5.5"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><div class="js-pjax"><script>(async () => {
+  const showKatex = () => {
+    document.querySelectorAll('#article-container .katex').forEach(el => el.classList.add('katex-show'))
+  }
+
+  if (!window.katex_js_css) {
+    window.katex_js_css = true
+    await btf.getCSS('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css')
+    if (true) {
+      await btf.getScript('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/copy-tex.min.js')
+    }
+  }
+
+  showKatex()
+})()</script><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.outerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        if (typeof svg === 'string') {
+          openSvgInNewTab({ source: svg, initViewBox })
+          return
+        }
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+
+    // Avoid binding multiple times on themeChange/pjax
+    if (wrap.__mermaidGestureBound) return
+    wrap.__mermaidGestureBound = true
+
+    // Helper: map client (viewport) coordinate -> viewBox coordinate
+    const clientToViewBox = (clientX, clientY) => {
+      const rect = svg.getBoundingClientRect()
+      const vb = wrap.__mermaidCurViewBox || getSvgViewBox(svg)
+      const x = vb[0] + (clientX - rect.left) * (vb[2] / rect.width)
+      const y = vb[1] + (clientY - rect.top) * (vb[3] / rect.height)
+      return { x, y, rect, vb }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      startCenter: null
+    }
+
+    const clampVb = vb => {
+      const init = wrap.__mermaidInitViewBox || vb
+      const minW = init[2] * 0.1
+      const maxW = init[2] * 10
+      const minH = init[3] * 0.1
+      const maxH = init[3] * 10
+      vb[2] = clamp(vb[2], minW, maxW)
+      vb[3] = clamp(vb[3], minH, maxH)
+      return vb
+    }
+
+    const setCurVb = vb => {
+      vb = clampVb(vb)
+      wrap.__mermaidCurViewBox = vb
+      setSvgViewBox(svg, vb)
+    }
+
+    const onPointerDown = e => {
+      // Allow only primary button for mouse
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      if (state.pointers.size === 1) {
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        state.startCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      // Pan with 1 pointer
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = [...state.pointers.values()][0]
+        const prev = { x: e.clientX - e.movementX, y: e.clientY - e.movementY }
+        // movementX/Y unreliable on touch, compute from stored last position
+        const last = wrap.__mermaidLastSinglePointer || p
+        const dxClient = p.x - last.x
+        const dyClient = p.y - last.y
+        wrap.__mermaidLastSinglePointer = p
+
+        const { rect } = clientToViewBox(p.x, p.y)
+        const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        const dx = dxClient * (vb[2] / rect.width)
+        const dy = dyClient * (vb[3] / rect.height)
+        setCurVb([vb[0] - dx, vb[1] - dy, vb[2], vb[3]])
+        return
+      }
+
+      // Pinch zoom with 2 pointers
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist // dist bigger => zoom in (viewBox smaller)
+
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const centerClient = { x: cx, y: cy }
+
+        const pxy = clientToViewBox(centerClient.x, centerClient.y)
+        const cpx = pxy.x
+        const cpy = pxy.y
+
+        const vb = zoomAtPoint(state.startVb, factor, cpx, cpy)
+        setCurVb(vb)
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+        state.startCenter = null
+        wrap.__mermaidLastSinglePointer = null
+      } else if (state.pointers.size === 1) {
+        // reset single pointer baseline to avoid jump
+        wrap.__mermaidLastSinglePointer = [...state.pointers.values()][0]
+      }
+    }
+
+    // Wheel zoom (mouse/trackpad)
+    const onWheel = e => {
+      // ctrlKey on mac trackpad pinch; we treat both as zoom
+      e.preventDefault()
+      const delta = e.deltaY
+      const zoomFactor = delta > 0 ? 1.1 : 0.9
+      const { x, y } = clientToViewBox(e.clientX, e.clientY)
+      const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      setCurVb(zoomAtPoint(vb, zoomFactor, x, y))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (!init) return
+      wrap.__mermaidCurViewBox = init.slice()
+      setSvgViewBox(svg, init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown)
+    svg.addEventListener('pointermove', onPointerMove)
+    svg.addEventListener('pointerup', onPointerUpOrCancel)
+    svg.addEventListener('pointercancel', onPointerUpOrCancel)
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    svg.addEventListener('dblclick', onDblClick)
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'neutral'
+
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+
+      // Clear old render (themeChange/pjax will rerun)
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      item.__mermaidGestureBound = false
+
+      const config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (true) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (true) attachMermaidViewerButton(item)
+      }
+
+
+      // mermaid v9 and v10 compatibility
+      typeof renderFn === 'string' ? renderMermaid(renderFn) : renderFn.then(({ svg }) => renderMermaid(svg))
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async src="/js/runtime.js"></script><script async src="/js/hitokoto-typed.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="30" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.5"></script></div></div></body></html>
