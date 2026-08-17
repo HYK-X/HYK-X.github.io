@@ -1,0 +1,1262 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线 | Study-HYK</title><meta name="author" content="HYK"><meta name="copyright" content="HYK"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="这条路线可以先抓住一个问题：多麦克风录音里有空间信息，神经网络应该怎样用它？ 西湖大学李晓飞老师相关工作的主线不是绕开信号处理，而是保留 STFT 这个坐标系。固定一个频率 f，模型看到的是不同时间、不同麦克风上的复数观测： X1​(t,f), X2​(t,f), …, XM​(t,f) M 是麦克风数，t 是时间帧。传统多通道方法经常按频率估计相位差、协方差矩阵或空间滤波器；窄带深度学习沿用这个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线">
+<meta property="og:url" content="https://learn.hykpromax.top/2026/07/08/westlake-spatial-speech-enhancement-roadmap/index.html">
+<meta property="og:site_name" content="Study-HYK">
+<meta property="og:description" content="这条路线可以先抓住一个问题：多麦克风录音里有空间信息，神经网络应该怎样用它？ 西湖大学李晓飞老师相关工作的主线不是绕开信号处理，而是保留 STFT 这个坐标系。固定一个频率 f，模型看到的是不同时间、不同麦克风上的复数观测： X1​(t,f), X2​(t,f), …, XM​(t,f) M 是麦克风数，t 是时间帧。传统多通道方法经常按频率估计相位差、协方差矩阵或空间滤波器；窄带深度学习沿用这个">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://learn.hykpromax.top/defaultpic/default11.webp">
+<meta property="article:published_time" content="2026-07-08T08:37:48.000Z">
+<meta property="article:modified_time" content="2026-07-08T08:37:48.000Z">
+<meta property="article:author" content="HYK">
+<meta property="article:tag" content="SpatialNet">
+<meta property="article:tag" content="多通道音频">
+<meta property="article:tag" content="语音分离">
+<meta property="article:tag" content="语音增强">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://learn.hykpromax.top/defaultpic/default11.webp"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线",
+  "url": "https://learn.hykpromax.top/2026/07/08/westlake-spatial-speech-enhancement-roadmap/",
+  "image": "https://learn.hykpromax.top/defaultpic/default11.webp",
+  "datePublished": "2026-07-08T08:37:48.000Z",
+  "dateModified": "2026-07-08T08:37:48.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "HYK",
+      "url": "https://learn.hykpromax.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="https://s2.loli.net/2022/12/08/SkKbjJ7g9uHvtXh.png"><link rel="canonical" href="https://learn.hykpromax.top/2026/07/08/westlake-spatial-speech-enhancement-roadmap/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.2.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"简"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css" media="defer" onload="this.media='all'"><link rel="stylesheet" href="/css/runtime.css" media="print" onload="this.media='all'"><meta name="generator" content="Hexo 8.1.2"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(https://s2.loli.net/2022/12/08/rc6EaYs2kgwXHVZ.webp);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">32</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">59</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/defaultpic/default11.webp);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Study-HYK</span></a><a class="nav-page-title" href="/"><span class="site-name">从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-08T08:37:48.000Z" title="发表于 2026-07-08 16:37:48">2026-07-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-07-08T08:37:48.000Z" title="更新于 2026-07-08 16:37:48">2026-07-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E8%AF%AD%E9%9F%B3%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86/">语音信号处理</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>26分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>这条路线可以先抓住一个问题：多麦克风录音里有空间信息，神经网络应该怎样用它？</p>
+<p>西湖大学李晓飞老师相关工作的主线不是绕开信号处理，而是保留 STFT 这个坐标系。固定一个频率 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span>，模型看到的是不同时间、不同麦克风上的复数观测：</p>
+<div class="katex-display"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace"> </span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.109em;">M</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mclose">)</span></span></span></span></span></div>
+<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">M</span></span></span></span> 是麦克风数，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6151em;"></span><span class="mord mathnormal">t</span></span></span></span> 是时间帧。传统多通道方法经常按频率估计相位差、协方差矩阵或空间滤波器；窄带深度学习沿用这个观察方式，只是把手工规则换成网络学习。</p>
+<p>阅读这条路线时，不要只记模型名字。每篇论文都可以按同一组问题读：</p>
+<ul>
+<li>它解决的是降噪、分离、去混响，还是联合增强？</li>
+<li>输入是单通道还是多通道？是波形还是 STFT？</li>
+<li>网络主要在时间、频率、通道、空间哪几个维度上建模？</li>
+<li>输出是 mask、复数谱，还是空间滤波器？</li>
+<li>训练时怎样处理多说话人排列问题？</li>
+</ul>
+<p>下面按时间线展开。中间会插入一篇 Conformer 背景论文，因为 NBC&#x2F;NBC2 的结构需要先理解这个骨干。</p>
+<h2 id="阅读前先统一流程"><a href="#阅读前先统一流程" class="headerlink" title="阅读前先统一流程"></a>阅读前先统一流程</h2><p>深度学习语音增强和分离通常可以放进这条流水线：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Input -&gt; Encoder -&gt; Separator -&gt; Audio Estimation -&gt; Decoder -&gt; Output</span><br></pre></td></tr></table></figure>
+
+<p><img src="/assets/voice-spilit/source_figures/ppt_encoder_decoder_pipeline.png" alt="编码器、分离器、音频估计和解码器框架" loading='lazy'></p>
+<p>这里的 Encoder 不一定是可学习网络。STFT 也是一种编码器，iSTFT 就是对应的解码器。Separator 是中间真正建模的部分，Audio Estimation 则决定网络最后输出什么：幅度比例、复数谱、空间滤波器，或者直接输出时域波形。</p>
+<p>常用符号先统一一下：</p>
+<table>
+<thead>
+<tr>
+<th>符号</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></td>
+<td>时间帧数</td>
+</tr>
+<tr>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span></span></span></td>
+<td>频率格点数</td>
+</tr>
+<tr>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">M</span></span></span></span> 或 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0785em;">I</span></span></span></span></td>
+<td>麦克风通道数</td>
+</tr>
+<tr>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span></span> 或 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span></span></span></span></td>
+<td>目标说话人或目标语音流数量</td>
+</tr>
+<tr>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mclose">)</span></span></span></span></td>
+<td>第 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">m</span></span></span></span> 个麦克风在时间帧 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6151em;"></span><span class="mord mathnormal">t</span></span></span></span>、频率 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span> 上的混合 STFT</td>
+</tr>
+<tr>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.1968em;vertical-align:-0.25em;"></span><span class="mord accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9468em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span></span><span style="top:-3.2523em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1667em;"><span class="mord">^</span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mclose">)</span></span></span></span></td>
+<td>估计出的目标语音 STFT</td>
+</tr>
+</tbody></table>
+<h2 id="2019-子带-LSTM：把多通道降噪放进窄带坐标"><a href="#2019-子带-LSTM：把多通道降噪放进窄带坐标" class="headerlink" title="2019 | 子带 LSTM：把多通道降噪放进窄带坐标"></a>2019 | 子带 LSTM：把多通道降噪放进窄带坐标</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：Multichannel Speech Enhancement Based on Time-Frequency Masking Using Subband Long Short-Term Memory</li>
+<li>中文翻译：(基于子带长短期记忆网络时频掩蔽的多通道语音增强)</li>
+<li>发表年份：2019</li>
+<li>作者信息：Xiaofei Li, Radu Horaud</li>
+<li>所属单位：INRIA Grenoble Rhone-Alpes, France</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道语音增强里的降噪问题；输入是多麦克风噪声语音，目标是增强参考通道语音，不处理多人分离，也不把去混响作为核心任务。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>传统多通道增强常在窄带频率上处理空间信息，但深度学习增强多使用全频带谱特征，计算和泛化都不够理想。</li>
+<li>全频带模型容易学习训练集里的说话人和噪声频谱模式，遇到未见过的说话人或噪声时可能退化。</li>
+<li>只做单通道谱映射时，很难利用麦克风之间的相干性、时间差和相位差。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>固定一个频率，让同一个 LSTM 在所有频率上共享参数，沿时间学习语音和噪声的差异。</li>
+<li>语音通常非平稳且跨通道相干，噪声相对平稳且空间相关性弱；窄带 LSTM 正是利用这个差异。</li>
+<li>这样做能减少模型对全频带谱形状的依赖，提高对新说话人、新噪声的泛化能力。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>核心是两层堆叠的 LSTM 或 BLSTM，后接一个全连接层。</li>
+<li>LSTM 沿时间处理某一个频率上的多通道 STFT 序列。</li>
+<li>论文比较了单向 LSTM 和双向 BLSTM。BLSTM 能看未来帧，适合离线增强；单向 LSTM 更接近在线处理，但上下文较少。</li>
+<li>这个网络不是每个频率训练一个模型，而是所有频率共享同一套网络参数。</li>
+</ul>
+<p><img src="/assets/voice-spilit/source_figures/ppt_subband_lstm.png" alt="子带 LSTM 结构" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是单一频率 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span> 下多个麦克风观测信号的 STFT 系数序列。</li>
+<li>对每个时间帧，把所有通道的实部和虚部拼成一个向量：</li>
+</ul>
+<div class="katex-display"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mop"><span class="mord mathrm">Re</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mord mathrm">Im</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mord mathrm">Re</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mord mathrm">Im</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mord mathrm">Re</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.109em;">M</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mord mathrm">Im</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">X</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.109em;">M</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)]</span></span></span></span></span></div>
+<ul>
+<li>输入会用参考通道幅度均值做归一化，避免不同响度样本带来的数值尺度差异。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：参考通道目标语音的幅度比掩码 MRM，也就是每个时间帧上目标幅度应该保留多少。</li>
+<li>激活函数：Sigmoid。</li>
+<li>输出范围：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">]</span></span></span></span>。</li>
+<li>固定频率下的维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>。</li>
+<li>使用方式：<strong>把 MRM 乘到混合语音参考通道的幅度谱上，相位通常仍使用混合语音相位。</strong></li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：5 麦克风 CHiME3 真实录音数据，用于多通道噪声环境下的增强评测。</li>
+<li>评价指标：<ul>
+<li>PESQ，Perceptual Evaluation of Speech Quality，语音质量感知评估，越高越好。</li>
+<li>STOI，Short-Time Objective Intelligibility，短时客观可懂度，越高越好。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>这篇论文给后续工作的起点很清楚：多通道深度学习不一定要从全频带谱图开始，可以固定频率，沿时间学习空间线索。</li>
+<li>它的限制也明显：输出仍是幅度 mask，不直接估计相位；任务主要是降噪，没有进入多说话人分离和去混响。</li>
+</ul>
+<h2 id="2020-窄带深度滤波：从-mask-走向复数谱和空间滤波器"><a href="#2020-窄带深度滤波：从-mask-走向复数谱和空间滤波器" class="headerlink" title="2020 | 窄带深度滤波：从 mask 走向复数谱和空间滤波器"></a>2020 | 窄带深度滤波：从 mask 走向复数谱和空间滤波器</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：Narrow-Band Deep Filtering for Multichannel Speech Enhancement</li>
+<li>中文翻译：(用于多通道语音增强的窄带深度滤波)</li>
+<li>发表年份：2020</li>
+<li>作者信息：Xiaofei Li, Radu Horaud</li>
+<li>所属单位：Westlake University, China；Inria Grenoble Rhone-Alpes and Univ. Grenoble Alpes, France</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道语音增强里的降噪问题；仍以多麦克风噪声语音为输入，不处理多人分离，主要不讨论去混响。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>只预测 MRM 时，模型主要改变幅度，不能直接恢复干净语音的复数谱。</li>
+<li>多通道增强的关键不只是保留多少频谱能量，还包括不同麦克风通道应该怎样组合。</li>
+<li>传统空间滤波有清楚物理意义，但手工估计滤波器在复杂噪声下不够灵活。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>保留 2019 年的窄带 LSTM 思路，但<strong>把网络输出目标扩展为三类：MRM、复数系数 CC、空间滤波器 SF&#x2F;SSF。</strong></li>
+<li>用同一个窄带网络同时探索幅度掩蔽、复数谱直接估计和空间滤波三种方式。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>主干仍是两层堆叠的 LSTM 或 BLSTM，后接全连接层。</li>
+<li>网络固定一个频率，沿时间处理多通道 STFT 序列，所有频率共享参数。</li>
+<li>相比 2019 年，结构本身变化不大，关键变化在 Audio Estimation 输出头。</li>
+</ul>
+<p><img src="/assets/voice-spilit/ppt_subband_lstm.png" alt="子带 LSTM 结构" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是单一频率下多个麦克风观测信号的 STFT 复数系数。</li>
+<li>每个通道都提供实部和虚部；固定频率时，输入可以看成一个随时间变化的多通道复数序列。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>MRM，幅度比掩码：<ul>
+<li>物理意义：预测参考通道目标语音幅度相对混合幅度的保留比例。</li>
+<li>激活函数：Sigmoid。</li>
+<li>维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>。</li>
+</ul>
+</li>
+<li>CC，Complex Coefficient，复数 STFT 系数：<ul>
+<li>物理意义：直接预测参考通道干净语音 STFT 的实部和虚部。</li>
+<li>激活函数：Identity，不限制输出范围。</li>
+<li>维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>。</li>
+</ul>
+</li>
+<li>SF&#x2F;SSF，Spatial Filter &#x2F; Smoothed Spatial Filter，空间滤波器：<ul>
+<li>物理意义：为每个麦克风通道预测一个复数滤波权重，再把多通道观测加权合成目标语音。</li>
+<li>激活函数：Tanh。</li>
+<li>维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>，其中 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0785em;">I</span></span></span></span> 是麦克风通道数，2 对应实部和虚部。</li>
+</ul>
+</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：4 麦克风 CHiME4 真实数据，同时包含人工加噪混合信号和现场录音。</li>
+<li>评价指标：<ul>
+<li>PESQ，感知语音质量，越高越好。</li>
+<li>STOI，短时客观可懂度，越高越好。</li>
+<li>SDR，信号失真比，越高越好。</li>
+<li>SRMR，Speech-to-Reverberation Modulation Energy Ratio，无参考语音质量&#x2F;混响相关指标，越高越好。</li>
+<li>WER，词错误率，用后端 DNN-HMM ASR 系统评估，越低越好。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>这篇论文把“窄带网络能输出什么”讲清楚了。MRM 是掩蔽，CC 是复数谱直接估计，SF&#x2F;SSF 则把网络输出和传统空间滤波连接起来。</li>
+<li>后续自然问题是：窄带模型缺少跨频率身份和语义联系，怎样把窄带信息和全频带信息融合起来？</li>
+<li>另一条延伸是把增强前端和 ASR 后端联合训练，让增强目标不只服务听感，也服务识别。</li>
+</ul>
+<h2 id="2022-NBSS：用-fPIT-解决窄带多人分离的频率错排"><a href="#2022-NBSS：用-fPIT-解决窄带多人分离的频率错排" class="headerlink" title="2022 | NBSS：用 fPIT 解决窄带多人分离的频率错排"></a>2022 | NBSS：用 fPIT 解决窄带多人分离的频率错排</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：Multi-Channel Narrow-Band Deep Speech Separation with Full-Band Permutation Invariant Training</li>
+<li>中文翻译：(结合全频带排列不变训练的多通道窄带深度语音分离)</li>
+<li>发表年份：2022</li>
+<li>作者信息：Changsheng Quan, Xiaofei Li</li>
+<li>所属单位：Zhejiang University；Westlake University &amp; Westlake Institute for Advanced Study</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道多说话人语音分离；重点是把多个说话人从多麦克风混合语音中拆开，不以降噪和去混响为主要目标。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>窄带方法可以利用空间向量和通道间差异，但每个频率独立处理会出现频率错排。</li>
+<li>频率错排的意思是：低频里的输出 1 可能对应说话人 A，高频里的输出 1 却可能对应说话人 B。拼回波形后，身份会混在一起。</li>
+<li>单频率上的 PIT 只能解决当前频率的输出顺序，不能保证全频带一致。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>保留窄带网络对空间信息的利用能力。</li>
+<li>用 full-band PIT 从全频带角度选择排列，让同一个输出在所有频率上尽量对应同一个说话人。损失在重组后的完整频带结果上选择整段语音级的最优排列。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>主体仍接近前两篇的窄带序列网络：固定一个频率，沿时间处理多通道 STFT。</li>
+<li>网络<strong>共享于所有频率，每个频率都输出多个目标说话人的复数谱。</strong></li>
+<li>训练阶段把所有频率的输出重新组合成完整语音，再用 fPIT 计算最优排列和损失。</li>
+</ul>
+<p><img src="/assets/voice-spilit/image-20260708160906264.png" alt="NBSS 窄带分离结构" loading='lazy'></p>
+<p>图中的窄带序列模块是主要的可学习部分，也可以替换为其他序列建模骨干。</p>
+<p><img src="/assets/voice-spilit/image-20260708160926748.png" alt="NBSS 可替换的序列建模骨干" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是单一频率下多麦克风混合语音的 STFT 系数。</li>
+<li>固定频率时，模型看到的是随时间变化的多通道复数观测；每个时间帧中包含多个麦克风的实部和虚部。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span></span> 个目标说话人在参考通道上的纯净语音空间图像的复数 STFT 系数。</li>
+<li>激活函数：按复数谱连续值直接回归，可理解为 Identity，不使用 Sigmoid 或 Tanh 限幅。</li>
+<li>固定频率下的维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>，其中 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2</span></span></span></span> 对应每个目标的实部和虚部。</li>
+<li>输出再经过逆归一化、跨频率重组和 iSTFT，得到分离后的时域语音。</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：Spatialized WSJ0-2mix，空间化双说话人混合数据，用于多通道分离。</li>
+<li>评价指标：<ul>
+<li>NB-PESQ，窄带感知语音质量，越高越好。</li>
+<li>WB-PESQ，宽带感知语音质量，越高越好。</li>
+<li>SDR，信号失真比，越高越好。</li>
+<li>SI-SDR，尺度不变信号失真比，越高越好，也是分离任务常用优化目标。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>NBSS 把窄带深度学习从单目标增强推进到多人分离。</li>
+<li>这篇论文最关键的不是换了一个网络，而是提出了 fPIT 这类全频带训练约束，让窄带输出能拼回一致的说话人。</li>
+<li>局限是计算仍然重，频率独立处理和跨频率协调之间还需要更强的结构。</li>
+</ul>
+<h2 id="2020-背景-Conformer：为什么后面会用注意力和卷积组合"><a href="#2020-背景-Conformer：为什么后面会用注意力和卷积组合" class="headerlink" title="2020 背景 | Conformer：为什么后面会用注意力和卷积组合"></a>2020 背景 | Conformer：为什么后面会用注意力和卷积组合</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：Conformer: Convolution-augmented Transformer for Speech Recognition</li>
+<li>中文翻译：(Conformer：基于卷积增强型 Transformer 的语音识别)</li>
+<li>发表年份：2020</li>
+<li>作者信息：Anmol Gulati, James Qin, Chung-Cheng Chiu 等</li>
+<li>所属单位：Google Inc.</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决端到端自动语音识别问题；输入是语音特征，输出是文本序列。它本身不是语音增强论文，但为后面的 NBC&#x2F;NBC2 提供了网络结构背景。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>Transformer 的 self-attention 擅长长距离全局交互，但局部细节建模较弱。</li>
+<li>CNN 擅长提取局部模式，但要看很远上下文时需要更深网络。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>把 self-attention 和 convolution 放进同一个 block，同时处理全局依赖和局部语音模式。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>前端使用卷积下采样层压缩时间和频率维。</li>
+<li>主体堆叠多个 Conformer block。</li>
+<li>每个 block 采用 Macaron-style 结构：前馈网络、带相对位置编码的多头自注意力、卷积模块、前馈网络。</li>
+<li>卷积模块通常包含逐点卷积、GLU 门控、一维深度可分离卷积、归一化和 Swish 激活。</li>
+</ul>
+<p><img src="/assets/voice-spilit/source_figures/ppt_conformer_block.png" alt="Conformer block" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是对数梅尔谱等 ASR 常用声学特征。</li>
+<li>典型形状可以理解为 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord text"><span class="mord">Batch</span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">80</span><span class="mclose">]</span></span></span></span>，其中 80 是梅尔频带数。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：文本词元或字符&#x2F;子词概率分布。</li>
+<li>激活函数：末端通常经过 softmax 得到词元概率。</li>
+<li>维度：与词表大小和时间解码步数有关，不对应 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>、<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span> 这类语音增强输出维度。</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：原论文在语音识别数据集上评测，不属于这条语音增强路线的核心实验。</li>
+<li>评价指标：<ul>
+<li>WER，词错误率，越低越好。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>对西湖大学路线而言，<strong>Conformer 的意义在于提供了一个适合语音序列的骨干：attention 看长程关系，convolution 看局部变化。</strong></li>
+<li>NBC 把这个结构搬到窄带多通道分离里，用 self-attention 处理空间向量聚类的相似性问题。</li>
+</ul>
+<h2 id="2022-NBC：用窄带-Conformer-做多通道分离"><a href="#2022-NBC：用窄带-Conformer-做多通道分离" class="headerlink" title="2022 | NBC：用窄带 Conformer 做多通道分离"></a>2022 | NBC：用窄带 Conformer 做多通道分离</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：Multichannel Speech Separation with Narrow-Band Conformer</li>
+<li>中文翻译：(基于窄带 Conformer 的多通道语音分离)</li>
+<li>发表年份：2022</li>
+<li>作者信息：Changsheng Quan, Xiaofei Li</li>
+<li>所属单位：Zhejiang University；Westlake University &amp; Westlake Institute for Advanced Study</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道多说话人语音分离；输入是多麦克风混合语音，输出是多个说话人的分离语音，不以降噪和去混响为主要目标。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>NBSS 证明窄带深度分离可行，但 LSTM&#x2F;BLSTM 对长时间关系和空间向量聚类的表达还不够强。</li>
+<li>多通道分离依赖同一声源的空间向量相似性，传统聚类和 beamforming 需要显式设计规则。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>self-attention 本质上会计算向量相似度并聚合相关信息，这和“把同一说话人的空间向量聚起来”很接近。</li>
+<li>Conformer 同时有 attention 和 convolution，适合处理长程说话人线索和局部平滑。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>提出 Narrow-Band Conformer，简称 NBC。</li>
+<li>每个频率独立输入网络，所有频率共享同一个 NBC。</li>
+<li>NBC block 用 self-attention 聚合相似空间向量，用卷积前馈模块做局部平滑和混响相关处理。</li>
+<li>训练仍使用 fPIT，保证跨频率的说话人顺序一致。<br><img src="/assets/voice-spilit/source_figures/ppt_narrowband_separation_framework.png" alt="窄带深度语音分离框架" loading='lazy'></li>
+</ul>
+<p><img src="/assets/voice-spilit/source_figures/ppt_narrowband_conformer_block.png" alt="窄带 Conformer block" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是单一频率下多麦克风混合语音的 STFT 复数系数。</li>
+<li>一个时间帧上的输入可以看成多个麦克风复数观测的拼接。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span></span> 个目标说话人在参考通道上的纯净语音空间图像复数 STFT。</li>
+<li>激活函数：按复数谱连续值直接回归，可理解为 Identity。</li>
+<li>固定频率下的维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>。</li>
+<li>输出经过跨频率排列对齐、重组和 iSTFT 变成多路分离波形。</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：人工合成的 Spatialized WSJ0-2mix；使用 gpuRIR 模拟 8 麦克风圆形阵列，半径约 5 cm，2 个说话人随机比例重叠，RT60 覆盖 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.1</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.0</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">s</span></span></span></span>。</li>
+<li>评价指标：<ul>
+<li>NB-PESQ，越高越好。</li>
+<li>WB-PESQ，越高越好。</li>
+<li>SI-SDR，越高越好。</li>
+<li>RTF，Real-Time Factor，计算实时率，越低越好。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>NBC 把空间向量聚类和 self-attention 联系起来，这条路线也由 RNN 逐渐转向注意力结构。</li>
+<li>主要问题是计算量。按频率独立运行网络会让 RTF 偏高，论文记录中 RTF 约为 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.32</span></span></span></span>，距离实时处理还有距离。</li>
+</ul>
+<h2 id="2022-NBC2：重新整理窄带-Conformer-的归一化和频率结构"><a href="#2022-NBC2：重新整理窄带-Conformer-的归一化和频率结构" class="headerlink" title="2022 | NBC2：重新整理窄带 Conformer 的归一化和频率结构"></a>2022 | NBC2：重新整理窄带 Conformer 的归一化和频率结构</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：NBC2: Multichannel Speech Separation with Revised Narrow-Band Conformer</li>
+<li>中文翻译：(NBC2：基于改进版窄带 Conformer 的多通道语音分离)</li>
+<li>发表年份：2022</li>
+<li>作者信息：Changsheng Quan, Xiaofei Li</li>
+<li>所属单位：Zhejiang University；Westlake University &amp; Westlake Institute for Advanced Study</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道多说话人语音分离；任务边界与 NBC 接近，重点仍是分离，不是联合降噪和去混响。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>NBC 已经引入 Conformer，但普通归一化方法可能破坏窄带模型里的频率分布结构。</li>
+<li>每个频率的空间相位关系不同，简单把频率当成普通特征维一起归一化，可能削弱空间线索。</li>
+<li>原始 NBC 计算仍重，结构还需要更适合窄带处理。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>保留窄带 attention 的空间向量聚类能力。</li>
+<li>重新设计归一化，让网络稳定训练，同时尊重频率维度的物理含义。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>仍以<strong>窄带 Conformer 为主体，由 self-attention、卷积前馈网络和归一化模块组成。</strong></li>
+<li>新增 <strong>Group Batch Normalization，简称 GBN。</strong></li>
+<li>GBN 把“组”的概念和窄带频率绑定起来，避免把不同频率的隐藏单元分布粗暴混合。</li>
+<li>论文还通过 attention map 说明网络确实在做帧级空间向量聚类。</li>
+</ul>
+<p><img src="/assets/voice-spilit/source_figures/ppt_nbc2_block.png" alt="NBC2 结构" loading='lazy'></p>
+<p><strong>整体框架结构和NBC相同</strong></p>
+<p><img src="/assets/voice-spilit/source_figures/ppt_nbc2_frequency_binding.png" alt="NBC2 中的频率绑定理解" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是固定频率下多麦克风混合语音的 STFT 复数系数。</li>
+<li>每个频率独立处理，所有频率共享网络。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span></span> 个目标说话人在参考通道上的纯净语音空间图像复数 STFT。</li>
+<li>激活函数：按复数谱连续值直接回归，可理解为 Identity。</li>
+<li>固定频率下的维度：<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span>。</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：<ul>
+<li>圆形阵列 Spatialized WSJ0-2mix：20,000 句训练、5,000 句验证、3,000 句测试；8 通道圆形阵列，半径约 5 cm，RT60 覆盖 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.1</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.0</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">s</span></span></span></span>。</li>
+<li>随机阵列数据：8 通道随机阵列几何，RT60 约 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.2</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.6</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">s</span></span></span></span>。</li>
+</ul>
+</li>
+<li>评价指标：<ul>
+<li>NB-PESQ，越高越好。</li>
+<li>WB-PESQ，越高越好。</li>
+<li>SDR，越高越好。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>NBC2 的重点不是换一个更大的网络，而是让窄带网络内部的统计处理更符合频率结构。</li>
+<li>它为 SpatialNet 铺路：如果要继续提升，必须让窄带时间建模和跨频率信息融合一起工作。</li>
+<li>后续自然方向是连续长语音、在线处理和更完整的联合增强任务。</li>
+</ul>
+<h2 id="2024-SpatialNet：窄带时间建模加跨带频率建模"><a href="#2024-SpatialNet：窄带时间建模加跨带频率建模" class="headerlink" title="2024 | SpatialNet：窄带时间建模加跨带频率建模"></a>2024 | SpatialNet：窄带时间建模加跨带频率建模</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：SpatialNet: Extensively Learning Spatial Information for Multichannel Joint Speech Separation, Denoising and Dereverberation</li>
+<li>中文翻译：(SpatialNet：充分学习空间信息的多通道联合语音分离、降噪和去混响)</li>
+<li>发表年份：2024</li>
+<li>作者信息：Changsheng Quan, Xiaofei Li</li>
+<li>所属单位：Zhejiang University；Westlake University &amp; Westlake Institute for Advanced Study；Westlake University School of Engineering</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道端到端联合语音分离、降噪和去混响问题；输入是多麦克风混合录音，输出是参考麦克风位置上的干净目标语音。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>早期窄带模型擅长利用空间信息，但频率之间交流不足。</li>
+<li>只做分离、只做降噪或只做去混响都不足以覆盖真实会议录音。</li>
+<li>纯全频带模型容易依赖频谱模式，跨数据集泛化可能不稳定。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>用 narrow-band block 继续处理固定频率下的时间和空间线索。</li>
+<li>用 cross-band block 补上跨频率的谱结构和身份一致性。</li>
+<li>在一个网络里同时覆盖分离、降噪、去混响。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>输入先通过特征转换层，把 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.109em;">M</span></span></span></span> 个实部&#x2F;虚部通道投影到隐藏维度 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0715em;">C</span></span></span></span>。</li>
+<li>主体由交替堆叠的 narrow-band block 和 cross-band block 构成。</li>
+<li>Narrow-band block 固定频率，沿时间处理，内部包含 self-attention 和 temporal convolution，用来做空间特征聚类、时间平滑和混响拖尾建模。</li>
+<li>Cross-band block 固定时间帧，沿频率处理，使用 full-band linear layer 和 frequency convolution，分别学习全频率相关性和相邻频率局部结构。</li>
+<li>末端将隐藏特征映射回目标语音的复数 STFT，再通过 iSTFT 回到波形。</li>
+</ul>
+<p><img src="/assets/voice-spilit/source_figures/ppt_spatialnet_architecture.png" alt="SpatialNet 总体结构" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是 STFT 域下多通道麦克风混合信号的实部和虚部拼接。</li>
+<li>完整输入维度：</li>
+</ul>
+<div class="katex-display"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.109em;">M</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span></span></span></span></div>
+<ul>
+<li><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">M</span></span></span></span> 是麦克风数，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span> 是时间帧数，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span></span></span> 是频率格点数。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：参考麦克风上 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span></span></span></span> 个目标说话人的纯净语音复数 STFT。</li>
+<li>激活函数：按复数谱连续值直接回归，可理解为 Identity；它不是 MRM 这类 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">]</span></span></span></span> mask。</li>
+<li>输出维度：</li>
+</ul>
+<div class="katex-display"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span></span></span></span></div>
+<ul>
+<li><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2</span></span></span></span> 对应实部和虚部。输出经 iSTFT 恢复为 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span></span></span></span> 路时域波形。</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：<ul>
+<li>人工合成数据：SMS-WSJ、WHAMR!、Spatialized WSJ0-2mix。</li>
+<li>真实录音数据：LibriCSS、REVERB Challenge、CHiME 3&#x2F;4 Challenge。</li>
+</ul>
+</li>
+<li>评价指标：<ul>
+<li>SDR、SI-SDR、SA-SDR，越高越好。</li>
+<li>NB-PESQ、WB-PESQ，越高越好。</li>
+<li>STOI、eSTOI，越高越好。</li>
+<li>FWSSNR、SRMR，越高越好。</li>
+<li>CD、LLR，越低越好。</li>
+<li>WER，越低越好。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>SpatialNet 把前面的两类建模放进同一网络：窄带块负责空间和时间，跨带块负责频率关联。</li>
+<li>它把早期“按频率做增强&#x2F;分离”的思路推进到联合增强系统，任务覆盖更接近真实录音。</li>
+<li>离线 SpatialNet 可以读取完整音频，实时会议、助听器和机器人听觉则只能使用当前和过去的信息，因此还需要在线版本。</li>
+</ul>
+<h3 id="SpatialNet-small-复现补充：WHAMR-与-SMS-WSJ-Plus"><a href="#SpatialNet-small-复现补充：WHAMR-与-SMS-WSJ-Plus" class="headerlink" title="SpatialNet-small 复现补充：WHAMR 与 SMS-WSJ-Plus"></a>SpatialNet-small 复现补充：WHAMR 与 SMS-WSJ-Plus</h3><p>本地复现使用 WHAMR 测试集和 SpatialNet-small。训练到 100 轮，保存的最佳权重来自第 99 轮。复现时要区分两类差距：未处理输入的差距，以及模型输出的差距。前者接近说明数据和评测大体对齐；后者偏低更可能来自训练细节、GPU 环境、权重选择或模型平均策略。</p>
+<p>SMS-WSJ-Plus 上的论文值和复现值：</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th align="right">NB-PESQ P&#x2F;R</th>
+<th align="right">eSTOI P&#x2F;R</th>
+<th align="right">SI-SDR P&#x2F;R</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unprocessed</td>
+<td align="right">1.35 &#x2F; 1.357</td>
+<td align="right">0.261 &#x2F; 0.263</td>
+<td align="right">-11.4 &#x2F; -11.341</td>
+</tr>
+<tr>
+<td>SpatialNet-small</td>
+<td align="right">3.11 &#x2F; 2.984</td>
+<td align="right">0.878 &#x2F; 0.852</td>
+<td align="right">13.8 &#x2F; 12.444</td>
+</tr>
+</tbody></table>
+<p>WHAMR 上的论文值和复现值：</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th align="right">SI-SDR P&#x2F;R</th>
+<th align="right">SDR P&#x2F;R</th>
+<th align="right">NB-PESQ P&#x2F;R</th>
+<th align="right">eSTOI P&#x2F;R</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unprocessed</td>
+<td align="right">-6.1 &#x2F; -6.127</td>
+<td align="right">-3.5 &#x2F; -3.487</td>
+<td align="right">1.41 &#x2F; 1.415</td>
+<td align="right">0.317 &#x2F; 0.317</td>
+</tr>
+<tr>
+<td>SpatialNet-small</td>
+<td align="right">11.8 &#x2F; 11.136</td>
+<td align="right">13.1 &#x2F; 12.435</td>
+<td align="right">2.93 &#x2F; 2.808</td>
+<td align="right">0.826 &#x2F; 0.805</td>
+</tr>
+</tbody></table>
+<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span></span></span></span> 表示论文报告值，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0077em;">R</span></span></span></span> 表示本地复现值。未处理输入差距很小，模型输出有一定差距。一个合理解释是论文提到最后若干轮权重平均，而本地复现使用官方仓库保存的单轮最优权重。</p>
+<h2 id="2024-Online-SpatialNet：把-SpatialNet-推向长时流式增强"><a href="#2024-Online-SpatialNet：把-SpatialNet-推向长时流式增强" class="headerlink" title="2024 | Online SpatialNet：把 SpatialNet 推向长时流式增强"></a>2024 | Online SpatialNet：把 SpatialNet 推向长时流式增强</h2><p>■ 基本信息：</p>
+<ul>
+<li>论文英文原名：Multichannel Long-Term Streaming Neural Speech Enhancement for Static and Moving Speakers</li>
+<li>中文翻译：(针对静态和移动说话人的多通道长时流式神经语音增强)</li>
+<li>发表年份：2024</li>
+<li>作者信息：Changsheng Quan, Xiaofei Li</li>
+<li>所属单位：Zhejiang University；Westlake University &amp; Westlake Institute for Advanced Study；Westlake University</li>
+</ul>
+<p>■ 核心任务：</p>
+<ul>
+<li>解决多通道长时流式语音降噪和去混响问题；目标是在线处理静态和移动说话人，不再要求一次看到完整音频。</li>
+</ul>
+<p>■ 研究动机：</p>
+<ul>
+<li>传统方法&#x2F;前人工作不足：<ul>
+<li>离线 SpatialNet 使用完整上下文，实时系统不能偷看未来帧。</li>
+<li>标准 self-attention 对长音频计算代价高，几分钟会议音频会带来显存和延迟问题。</li>
+<li>训练短音频得到的模型，直接测试很长音频时可能外推能力不足。</li>
+</ul>
+</li>
+<li>本文探索动机：<ul>
+<li>用线性或近线性的在线序列模块替代离线 self-attention。</li>
+<li>让模型只依赖当前和过去信息，同时保留长程历史建模能力。</li>
+<li>用短语音训练加长语音微调提高长度外推能力。</li>
+</ul>
+</li>
+</ul>
+<p>■ 网络具体结构：</p>
+<ul>
+<li>以 SpatialNet 为基础，重点改 narrow-band block 的时间建模部分。</li>
+<li>时间卷积改为因果卷积，保证不看未来帧。</li>
+<li>提出三种在线变体：<ul>
+<li>oSpatialNet-MSA：masked self-attention，只在过去固定窗口内计算注意力。</li>
+<li>oSpatialNet-Ret：Retention，用状态矩阵和指数衰减压缩历史，实现线性推理。</li>
+<li>oSpatialNet-Mamba：用 Mamba 结构化状态空间模型替换原有自注意力和时间卷积前馈模块。</li>
+</ul>
+</li>
+<li>训练策略是 ST+LF：先用短语音训练，再用长语音微调。</li>
+</ul>
+<p><img src="/assets/voice-spilit/source_figures/ppt_online_spatialnet_mamba.png" alt="Online SpatialNet 与 Mamba 变体" loading='lazy'></p>
+<p>■ 模型输入：</p>
+<ul>
+<li>输入是多通道长时流式 STFT 复数特征。</li>
+<li>每次推理只能使用当前帧和历史帧，不能使用未来帧。</li>
+</ul>
+<p>■ 模型输出：</p>
+<ul>
+<li>输出物理意义：增强后的目标语音复数 STFT，主要用于降噪和去混响。</li>
+<li>激活函数：按复数谱连续值直接回归，可理解为 Identity。</li>
+<li>维度：沿用 SpatialNet 型输出，通常可写成 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">F</span></span></span></span>；在单目标增强设置下 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span>。</li>
+<li>输出经 iSTFT 还原为时域增强语音。</li>
+</ul>
+<p>■ 实验设置：</p>
+<ul>
+<li>数据集：模拟的静态和移动说话人数据；房间 RT60 覆盖 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0.1</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1.0</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">s</span></span></span></span>，6 通道阵列拓扑接近 CHiME-3，噪声来自 CHiME-3，SNR 在 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">−</span><span class="mord">5</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord">10</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">dB</span></span></span></span></span> 之间采样。</li>
+<li>评价指标：<ul>
+<li>NB-PESQ，越高越好。</li>
+<li>ESTOI，越高越好。</li>
+<li>SI-SDR，越高越好。</li>
+<li>SDR，越高越好。</li>
+<li>参数量、FLOPs、是否因果，用于评估复杂度和实时性，通常越低越利于部署。</li>
+</ul>
+</li>
+</ul>
+<p>■ 展望与总结：</p>
+<ul>
+<li>Online SpatialNet 回答的是“SpatialNet 怎样进入实时场景”。</li>
+<li>Mamba 和 Retention 的引入说明，这条路线后续很可能继续吸收长序列建模的新模块。</li>
+<li>真正落地时还要继续看延迟、显存、说话人移动速度和长音频外推能力。</li>
+</ul>
+<h2 id="路线总结"><a href="#路线总结" class="headerlink" title="路线总结"></a>路线总结</h2><p>按时间线看，这条路线可以压缩成下面几步：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">2019 子带 LSTM</span><br><span class="line">-&gt; 2020 窄带深度滤波</span><br><span class="line">-&gt; 2022 NBSS</span><br><span class="line">-&gt; 2022 NBC / NBC2</span><br><span class="line">-&gt; 2024 SpatialNet</span><br><span class="line">-&gt; 2024 Online SpatialNet</span><br><span class="line">-&gt; 轻量化、动态声源和频谱-空间解耦</span><br></pre></td></tr></table></figure>
+
+<p>每一步解决的问题不同：</p>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>核心推进</th>
+<th>可以这样记</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2019</td>
+<td>把深度网络放进窄带多通道降噪</td>
+<td>固定频率，沿时间学空间线索</td>
+</tr>
+<tr>
+<td>2020</td>
+<td>输出从 MRM 扩展到 CC 和 SF&#x2F;SSF</td>
+<td>不只预测保留比例，也预测复数谱和空间滤波器</td>
+</tr>
+<tr>
+<td>2022 NBSS</td>
+<td>把窄带推进到多人分离</td>
+<td>用 fPIT 解决频率错排</td>
+</tr>
+<tr>
+<td>2022 NBC</td>
+<td>引入 Conformer</td>
+<td>用 attention 做空间向量聚类</td>
+</tr>
+<tr>
+<td>2022 NBC2</td>
+<td>修正归一化和频率结构</td>
+<td>GBN 保护窄带统计</td>
+</tr>
+<tr>
+<td>2024 SpatialNet</td>
+<td>窄带块和跨带块交替</td>
+<td>同时处理空间、时间、频率</td>
+</tr>
+<tr>
+<td>2024 Online SpatialNet</td>
+<td>因果流式和长音频</td>
+<td>用 MSA&#x2F;Retention&#x2F;Mamba 替换离线 attention</td>
+</tr>
+</tbody></table>
+<p>这条路线的学习重点不是背模型名，而是理解四个维度的分工：</p>
+<table>
+<thead>
+<tr>
+<th>维度关系</th>
+<th>直观理解</th>
+<th>建模意义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>空间-通道</td>
+<td>通道是空间的离散采样点</td>
+<td>麦克风阵列把三维空间转成多路观测，TDOA 和 ILD 是重要线索</td>
+</tr>
+<tr>
+<td>空间-频率</td>
+<td>相同延迟在不同频率上表现为不同相位差</td>
+<td>高频容易相位缠绕，需要跨频率验证线索是否一致</td>
+</tr>
+<tr>
+<td>空间-时间</td>
+<td>房间反射把一次传播拉长成时间序列</td>
+<td>去混响和动态声源都需要长程时间建模</td>
+</tr>
+<tr>
+<td>时间-频率</td>
+<td>STFT 窗长决定时频分辨率</td>
+<td>长窗频率细，短窗时间准，需要按任务权衡</td>
+</tr>
+<tr>
+<td>通道-时间</td>
+<td>单帧通道观测不稳定，需要跨帧统计</td>
+<td>空间协方差、空间向量聚类都依赖多帧信息</td>
+</tr>
+<tr>
+<td>通道-频率</td>
+<td>声学传播路径随频率变化</td>
+<td>RTF 和复数空间滤波通常要逐频率估计</td>
+</tr>
+</tbody></table>
+<h2 id="后续展望"><a href="#后续展望" class="headerlink" title="后续展望"></a>后续展望</h2><p>展望论文总结了该领域迈向实际落地所面临的核心挑战与未来发展方向：</p>
+<ul>
+<li>长音频处理：缓解注意力机制在处理几分钟级别长会议语音时的算力和内存瓶颈。</li>
+<li>轻量化模型：在保证分离性能的前提下压缩庞大的参数量，以适配移动手机和边缘受限设备。</li>
+<li>因果流式分离 (Causal Separation)：强制网络仅依赖当前和历史特征（不看未来帧），以实现助听器等设备的极低延迟实时处理。</li>
+<li>生成式方法引入：利用扩散模型 (Diffusion) 和 GAN 来提升模型在极端噪声下的泛化性，改善判别式模型易产生的语音伪影和失真。</li>
+<li>联合建模：将语音分离与下游的 ASR（语音识别）、Speaker Diarization（说话人日记）等任务进行端到端一体化联合训练，彻底解决“谁在什么时候说了什么”的问题。</li>
+</ul>
+<h2 id="扩展阅读"><a href="#扩展阅读" class="headerlink" title="扩展阅读"></a>扩展阅读</h2><ul>
+<li><p>Li X，Horaud R. Multichannel speech enhancement based on time-frequency masking using subband long short-term memory[C&#x2F;OL]&#x2F;&#x2F;2019 IEEE Workshop on Applications of Signal Processing to Audio and Acoustics (WASPAA). 2019：298-302. <a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/abstract/document/8937218">https://ieeexplore.ieee.org/abstract/document/8937218</a>. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.1109/WASPAA.2019.8937218">10.1109&#x2F;WASPAA.2019.8937218</a>.</p>
+</li>
+<li><p>LI X，Horaud R. Narrow-band deep filtering for multichannel speech enhancement[PP&#x2F;OL]. arXiv（2020-09-23）[2026-07-02]. <a target="_blank" rel="noopener" href="http://arxiv.org/abs/1911.10791">http://arxiv.org/abs/1911.10791</a>. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.48550/arXiv.1911.10791">10.48550&#x2F;arXiv.1911.10791</a>.</p>
+</li>
+<li><p>Quan C，Xiaofei Li. Multi-channel narrow-band deep speech separation with full-band permutation invariant training[C&#x2F;OL]&#x2F;&#x2F;ICASSP 2022 - 2022 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). 2022：541-545. <a target="_blank" rel="noopener" href="https://ieeexplore.ieee.org/abstract/document/9747346">https://ieeexplore.ieee.org/abstract/document/9747346</a>. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.1109/ICASSP43922.2022.9747346">10.1109&#x2F;ICASSP43922.2022.9747346</a>.</p>
+</li>
+<li><p>Quan C，Li X. Multichannel speech separation with narrow-band conformer[C&#x2F;OL]&#x2F;&#x2F;Interspeech 2022. ISCA，2022：5378-5382. <a target="_blank" rel="noopener" href="https://www.isca-archive.org/interspeech_2022/quan22b_interspeech.html">https://www.isca-archive.org/interspeech_2022&#x2F;quan22b_interspeech.html</a>. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.21437/Interspeech.2022-10018">10.21437&#x2F;Interspeech.2022-10018</a>.</p>
+</li>
+<li><p>Quan C，Li X. NBC2: Multichannel speech separation with revised narrow-band conformer[PP&#x2F;OL]. arXiv（2022-12-05）[2026-07-02]. <a target="_blank" rel="noopener" href="http://arxiv.org/abs/2212.02076">http://arxiv.org/abs/2212.02076</a>. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.48550/arXiv.2212.02076">10.48550&#x2F;arXiv.2212.02076</a>.</p>
+</li>
+<li><p>Quan C，Li X. SpatialNet: Extensively learning spatial information for multichannel joint speech separation, denoising and dereverberation[PP&#x2F;OL]. arXiv（2023-12-22）[2026-06-30]. <a target="_blank" rel="noopener" href="http://arxiv.org/abs/2307.16516">http://arxiv.org/abs/2307.16516</a>. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.48550/arXiv.2307.16516">10.48550&#x2F;arXiv.2307.16516</a>.</p>
+</li>
+<li><p>Quan C，Li X. Multichannel long-term streaming neural speech enhancement for static and moving speakers[J&#x2F;OL]. IEEE Signal Processing Letters，2024，31：2295-2299. DOI:<a target="_blank" rel="noopener" href="https://doi.org/10.1109/LSP.2024.3418714">10.1109&#x2F;LSP.2024.3418714</a>.</p>
+</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top">HYK</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top/2026/07/08/westlake-spatial-speech-enhancement-roadmap/">https://learn.hykpromax.top/2026/07/08/westlake-spatial-speech-enhancement-roadmap/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://learn.hykpromax.top" target="_blank">Study-HYK</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/defaultpic/default11.webp" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的"><img class="cover" src="/defaultpic/default9%20.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post" loading='lazy'><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Hexo 本地源码丢了以后，我是怎么把博客救回来的</div></div><div class="info-2"><div class="info-item-1">这次整理博客的起点有点狼狈：网站还能打开，GitHub 仓库也在，但原来的 Hexo 本地工程找不到了。 仓库里留下的不是 Markdown，而是一堆已经生成好的 HTML、CSS 和 JavaScript。换句话说，房子还在，图纸没了。文章在网页上都能看，可我没法正常修改，也没法继续用 Hexo 写新文章。 好在静态网页并不是完全没用。只要文章发布过，正文、标题、日期、标签、分类这些信息大多还藏在 HTML 里。这次折腾下来，我把原来的文章重新整理成了一个能安装、能生成、能本地预览，也能继续发布的 Hexo 工程。 先别动远端刚开始最应该做的事不是重装 Hexo，而是把还活着的静态站点完整留一份。 我把项目拆成了两个目录： 123BLOG/├── hexo-old-web/    # 从 GitHub 拉下来的旧网页└── hexo-source/     # 重新恢复的 Hexo 工程  hexo-old-web 就当现场备份，不在里面直接改东西。后面的解析和转换全部输出到 hexo-source。这样即使恢复脚本写坏了，也不会把仅剩的一份网页覆盖掉。 当时如果直接在原仓库里...</div></div></div></a><a class="pagination-related" href="/2026/07/08/speech-enhancement-foundations/" title="语音增强基础：从鸡尾酒问题到多通道空间滤波"><img class="cover" src="/defaultpic/default7.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post" loading='lazy'><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">语音增强基础：从鸡尾酒问题到多通道空间滤波</div></div><div class="info-2"><div class="info-item-1">上一份材料把声音讲成了数字波形和 STFT。现在回到会议录音本身：麦克风录到的不是“一个说话人一条轨道”，而是同一时刻所有声源在麦克风位置的叠加结果。 人耳在现场能把注意力集中到某个说话人身上。麦克风没有这种能力。它保存的是混合声音： x[n]=s1​[n]+s2​[n]+noise[n]+reverb[n] 这个式子只是一个简化版本。它的意思是：混合录音 x[n] 里可能有第一个说话人 s1​[n]、第二个说话人 s2​[n]、非语音噪声 noise[n]，也有房间反射造成的混响 reverb[n]。 鸡尾酒问题鸡尾酒问题指的是多人同时说话时，系统要从混合录音中恢复目标声音。这个名字来自聚会或餐厅的场景：周围很多人都在说话，但你仍然想听清某一个人。 在语音处理里，这个问题常常出现在：    场景 录音里混进了什么    会议录音 多人重叠说话、投影仪或空调噪声、房间反射   远程课堂 老师声音、学生提问、键盘声、网络设备噪声   车内通话 驾驶员、副驾驶、路噪、发动机声   智能音箱 用户声音、电视声、音乐、房间混响   难点在于，模型只有混合输入。训练时可以拿到干净参考，部署...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/07/08/speech-enhancement-foundations/" title="语音增强基础：从鸡尾酒问题到多通道空间滤波"><img class="cover" src="/defaultpic/default7.webp" alt="cover" loading='lazy'><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-07-08</div><div class="info-item-2">语音增强基础：从鸡尾酒问题到多通道空间滤波</div></div><div class="info-2"><div class="info-item-1">上一份材料把声音讲成了数字波形和 STFT。现在回到会议录音本身：麦克风录到的不是“一个说话人一条轨道”，而是同一时刻所有声源在麦克风位置的叠加结果。 人耳在现场能把注意力集中到某个说话人身上。麦克风没有这种能力。它保存的是混合声音： x[n]=s1​[n]+s2​[n]+noise[n]+reverb[n] 这个式子只是一个简化版本。它的意思是：混合录音 x[n] 里可能有第一个说话人 s1​[n]、第二个说话人 s2​[n]、非语音噪声 noise[n]，也有房间反射造成的混响 reverb[n]。 鸡尾酒问题鸡尾酒问题指的是多人同时说话时，系统要从混合录音中恢复目标声音。这个名字来自聚会或餐厅的场景：周围很多人都在说话，但你仍然想听清某一个人。 在语音处理里，这个问题常常出现在：    场景 录音里混进了什么    会议录音 多人重叠说话、投影仪或空调噪声、房间反射   远程课堂 老师声音、学生提问、键盘声、网络设备噪声   车内通话 驾驶员、副驾驶、路噪、发动机声   智能音箱 用户声音、电视声、音乐、房间混响   难点在于，模型只有混合输入。训练时可以拿到干净参考，部署...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="author-info-name">HYK</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">32</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">59</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/HYK-X" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://space.bilibili.com/161889615" target="_blank" title="BiliBili"><i class="fab fa-bilibili"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">爱人工智能，爱欣然，爱猫羽雫</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%98%85%E8%AF%BB%E5%89%8D%E5%85%88%E7%BB%9F%E4%B8%80%E6%B5%81%E7%A8%8B"><span class="toc-number">1.</span> <span class="toc-text">阅读前先统一流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2019-%E5%AD%90%E5%B8%A6-LSTM%EF%BC%9A%E6%8A%8A%E5%A4%9A%E9%80%9A%E9%81%93%E9%99%8D%E5%99%AA%E6%94%BE%E8%BF%9B%E7%AA%84%E5%B8%A6%E5%9D%90%E6%A0%87"><span class="toc-number">2.</span> <span class="toc-text">2019 | 子带 LSTM：把多通道降噪放进窄带坐标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2020-%E7%AA%84%E5%B8%A6%E6%B7%B1%E5%BA%A6%E6%BB%A4%E6%B3%A2%EF%BC%9A%E4%BB%8E-mask-%E8%B5%B0%E5%90%91%E5%A4%8D%E6%95%B0%E8%B0%B1%E5%92%8C%E7%A9%BA%E9%97%B4%E6%BB%A4%E6%B3%A2%E5%99%A8"><span class="toc-number">3.</span> <span class="toc-text">2020 | 窄带深度滤波：从 mask 走向复数谱和空间滤波器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2022-NBSS%EF%BC%9A%E7%94%A8-fPIT-%E8%A7%A3%E5%86%B3%E7%AA%84%E5%B8%A6%E5%A4%9A%E4%BA%BA%E5%88%86%E7%A6%BB%E7%9A%84%E9%A2%91%E7%8E%87%E9%94%99%E6%8E%92"><span class="toc-number">4.</span> <span class="toc-text">2022 | NBSS：用 fPIT 解决窄带多人分离的频率错排</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2020-%E8%83%8C%E6%99%AF-Conformer%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E5%90%8E%E9%9D%A2%E4%BC%9A%E7%94%A8%E6%B3%A8%E6%84%8F%E5%8A%9B%E5%92%8C%E5%8D%B7%E7%A7%AF%E7%BB%84%E5%90%88"><span class="toc-number">5.</span> <span class="toc-text">2020 背景 | Conformer：为什么后面会用注意力和卷积组合</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2022-NBC%EF%BC%9A%E7%94%A8%E7%AA%84%E5%B8%A6-Conformer-%E5%81%9A%E5%A4%9A%E9%80%9A%E9%81%93%E5%88%86%E7%A6%BB"><span class="toc-number">6.</span> <span class="toc-text">2022 | NBC：用窄带 Conformer 做多通道分离</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2022-NBC2%EF%BC%9A%E9%87%8D%E6%96%B0%E6%95%B4%E7%90%86%E7%AA%84%E5%B8%A6-Conformer-%E7%9A%84%E5%BD%92%E4%B8%80%E5%8C%96%E5%92%8C%E9%A2%91%E7%8E%87%E7%BB%93%E6%9E%84"><span class="toc-number">7.</span> <span class="toc-text">2022 | NBC2：重新整理窄带 Conformer 的归一化和频率结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2024-SpatialNet%EF%BC%9A%E7%AA%84%E5%B8%A6%E6%97%B6%E9%97%B4%E5%BB%BA%E6%A8%A1%E5%8A%A0%E8%B7%A8%E5%B8%A6%E9%A2%91%E7%8E%87%E5%BB%BA%E6%A8%A1"><span class="toc-number">8.</span> <span class="toc-text">2024 | SpatialNet：窄带时间建模加跨带频率建模</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SpatialNet-small-%E5%A4%8D%E7%8E%B0%E8%A1%A5%E5%85%85%EF%BC%9AWHAMR-%E4%B8%8E-SMS-WSJ-Plus"><span class="toc-number">8.1.</span> <span class="toc-text">SpatialNet-small 复现补充：WHAMR 与 SMS-WSJ-Plus</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2024-Online-SpatialNet%EF%BC%9A%E6%8A%8A-SpatialNet-%E6%8E%A8%E5%90%91%E9%95%BF%E6%97%B6%E6%B5%81%E5%BC%8F%E5%A2%9E%E5%BC%BA"><span class="toc-number">9.</span> <span class="toc-text">2024 | Online SpatialNet：把 SpatialNet 推向长时流式增强</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B7%AF%E7%BA%BF%E6%80%BB%E7%BB%93"><span class="toc-number">10.</span> <span class="toc-text">路线总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%8E%E7%BB%AD%E5%B1%95%E6%9C%9B"><span class="toc-number">11.</span> <span class="toc-text">后续展望</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB"><span class="toc-number">12.</span> <span class="toc-text">扩展阅读</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的"><img src="/defaultpic/default9%20.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Hexo 本地源码丢了以后，我是怎么把博客救回来的"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的">Hexo 本地源码丢了以后，我是怎么把博客救回来的</a><time datetime="2026-08-06T10:10:00.000Z" title="发表于 2026-08-06 18:10:00">2026-08-06</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/08/westlake-spatial-speech-enhancement-roadmap/" title="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线"><img src="/defaultpic/default11.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/07/08/westlake-spatial-speech-enhancement-roadmap/" title="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线">从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线</a><time datetime="2026-07-08T08:37:48.000Z" title="发表于 2026-07-08 16:37:48">2026-07-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/08/speech-enhancement-foundations/" title="语音增强基础：从鸡尾酒问题到多通道空间滤波"><img src="/defaultpic/default7.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="语音增强基础：从鸡尾酒问题到多通道空间滤波"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/07/08/speech-enhancement-foundations/" title="语音增强基础：从鸡尾酒问题到多通道空间滤波">语音增强基础：从鸡尾酒问题到多通道空间滤波</a><time datetime="2026-07-08T08:34:56.000Z" title="发表于 2026-07-08 16:34:56">2026-07-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/08/speech-foundations/" title="语音基础：从采样到 STFT"><img src="/defaultpic/default5.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="语音基础：从采样到 STFT"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/07/08/speech-foundations/" title="语音基础：从采样到 STFT">语音基础：从采样到 STFT</a><time datetime="2026-07-08T07:09:17.000Z" title="发表于 2026-07-08 15:09:17">2026-07-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践"><img src="/defaultpic/default9%20.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="CAD_Converter：从图纸转换到 AI 分析的工程实践"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/03/14/cad-converter-engineering-notes/" title="CAD_Converter：从图纸转换到 AI 分析的工程实践">CAD_Converter：从图纸转换到 AI 分析的工程实践</a><time datetime="2026-03-14T05:01:39.000Z" title="发表于 2026-03-14 13:01:39">2026-03-14</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2022 - 2026 By HYK</span></div><div class="footer_custom_text"><div id="workboard"></div>
+<p id="ghbdages">
+  <a class="github-badge" target="_blank" href="https://hexo.io/" style="margin-inline:5px" data-title="博客框架为Hexo_v8.1.2" title=""><img src="https://img.shields.io/badge/Frame-Hexo-blue?style=flat&logo=hexo" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://butterfly.js.org/" style="margin-inline:5px" data-title="主题版本Butterfly_v5.5.5" title=""><img src="https://img.shields.io/badge/Theme-Butterfly-6513df?style=flat&logo=bitdefender" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://vercel.com/" style="margin-inline:5px" data-title="本站采用多线部署，主线路托管于Vercel" title=""><img src="https://img.shields.io/badge/Hosted-Vercel-brightgreen?style=flat&logo=Vercel" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://dashboard.4everland.org/" style="margin-inline:5px" data-title="本站采用多线部署，备用线路托管于4EVERLAND" title=""><img src="https://img.shields.io/badge/Hosted-4EVERLAND-22DDDD?style=flat&logo=IPFS" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://github.com/" style="margin-inline:5px" data-title="本站项目由Github托管" title=""><img src="https://img.shields.io/badge/Source-Github-d021d6?style=flat&logo=GitHub" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/" style="margin-inline:5px" data-title="本站采用知识共享署名-非商业性使用-相同方式共享4.0国际许可协议进行许可" title=""><img src="https://img.shields.io/badge/Copyright-BY--NC--SA%204.0-d42328?style=flat&logo=Claris" alt="" loading='lazy'></a>
+</p>
+</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5"></script><script src="/js/main.js?v=5.5.5"></script><script src="/js/tw_cn.js?v=5.5.5"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><div class="js-pjax"><script>(async () => {
+  const showKatex = () => {
+    document.querySelectorAll('#article-container .katex').forEach(el => el.classList.add('katex-show'))
+  }
+
+  if (!window.katex_js_css) {
+    window.katex_js_css = true
+    await btf.getCSS('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css')
+    if (true) {
+      await btf.getScript('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/copy-tex.min.js')
+    }
+  }
+
+  showKatex()
+})()</script><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.outerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        if (typeof svg === 'string') {
+          openSvgInNewTab({ source: svg, initViewBox })
+          return
+        }
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+
+    // Avoid binding multiple times on themeChange/pjax
+    if (wrap.__mermaidGestureBound) return
+    wrap.__mermaidGestureBound = true
+
+    // Helper: map client (viewport) coordinate -> viewBox coordinate
+    const clientToViewBox = (clientX, clientY) => {
+      const rect = svg.getBoundingClientRect()
+      const vb = wrap.__mermaidCurViewBox || getSvgViewBox(svg)
+      const x = vb[0] + (clientX - rect.left) * (vb[2] / rect.width)
+      const y = vb[1] + (clientY - rect.top) * (vb[3] / rect.height)
+      return { x, y, rect, vb }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      startCenter: null
+    }
+
+    const clampVb = vb => {
+      const init = wrap.__mermaidInitViewBox || vb
+      const minW = init[2] * 0.1
+      const maxW = init[2] * 10
+      const minH = init[3] * 0.1
+      const maxH = init[3] * 10
+      vb[2] = clamp(vb[2], minW, maxW)
+      vb[3] = clamp(vb[3], minH, maxH)
+      return vb
+    }
+
+    const setCurVb = vb => {
+      vb = clampVb(vb)
+      wrap.__mermaidCurViewBox = vb
+      setSvgViewBox(svg, vb)
+    }
+
+    const onPointerDown = e => {
+      // Allow only primary button for mouse
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      if (state.pointers.size === 1) {
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        state.startCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      // Pan with 1 pointer
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = [...state.pointers.values()][0]
+        const prev = { x: e.clientX - e.movementX, y: e.clientY - e.movementY }
+        // movementX/Y unreliable on touch, compute from stored last position
+        const last = wrap.__mermaidLastSinglePointer || p
+        const dxClient = p.x - last.x
+        const dyClient = p.y - last.y
+        wrap.__mermaidLastSinglePointer = p
+
+        const { rect } = clientToViewBox(p.x, p.y)
+        const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        const dx = dxClient * (vb[2] / rect.width)
+        const dy = dyClient * (vb[3] / rect.height)
+        setCurVb([vb[0] - dx, vb[1] - dy, vb[2], vb[3]])
+        return
+      }
+
+      // Pinch zoom with 2 pointers
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist // dist bigger => zoom in (viewBox smaller)
+
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const centerClient = { x: cx, y: cy }
+
+        const pxy = clientToViewBox(centerClient.x, centerClient.y)
+        const cpx = pxy.x
+        const cpy = pxy.y
+
+        const vb = zoomAtPoint(state.startVb, factor, cpx, cpy)
+        setCurVb(vb)
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+        state.startCenter = null
+        wrap.__mermaidLastSinglePointer = null
+      } else if (state.pointers.size === 1) {
+        // reset single pointer baseline to avoid jump
+        wrap.__mermaidLastSinglePointer = [...state.pointers.values()][0]
+      }
+    }
+
+    // Wheel zoom (mouse/trackpad)
+    const onWheel = e => {
+      // ctrlKey on mac trackpad pinch; we treat both as zoom
+      e.preventDefault()
+      const delta = e.deltaY
+      const zoomFactor = delta > 0 ? 1.1 : 0.9
+      const { x, y } = clientToViewBox(e.clientX, e.clientY)
+      const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      setCurVb(zoomAtPoint(vb, zoomFactor, x, y))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (!init) return
+      wrap.__mermaidCurViewBox = init.slice()
+      setSvgViewBox(svg, init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown)
+    svg.addEventListener('pointermove', onPointerMove)
+    svg.addEventListener('pointerup', onPointerUpOrCancel)
+    svg.addEventListener('pointercancel', onPointerUpOrCancel)
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    svg.addEventListener('dblclick', onDblClick)
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'neutral'
+
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+
+      // Clear old render (themeChange/pjax will rerun)
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      item.__mermaidGestureBound = false
+
+      const config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (true) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (true) attachMermaidViewerButton(item)
+      }
+
+
+      // mermaid v9 and v10 compatibility
+      typeof renderFn === 'string' ? renderMermaid(renderFn) : renderFn.then(({ svg }) => renderMermaid(svg))
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async src="/js/runtime.js"></script><script async src="/js/hitokoto-typed.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="30" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.5"></script></div></div></body></html>
