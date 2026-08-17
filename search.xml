@@ -144,9 +144,9 @@
       
         <tags>
             
-            <tag> MathType </tag>
-            
             <tag> Word </tag>
+            
+            <tag> MathType </tag>
             
             <tag> Office </tag>
             
@@ -190,11 +190,11 @@
     
     
     <entry>
-      <title>AI_Psyc_Project：本地模型接入与前后端状态处理</title>
+      <title>AI_Psyc_Project：用实时多模态对话完成心理测评</title>
       <link href="/2026/01/27/ai-psyc-project-fullstack-notes/"/>
       <url>/2026/01/27/ai-psyc-project-fullstack-notes/</url>
       
-        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/AI_Psyc_Project">AI_Psyc_Project</a> 是一个私有 Fork 项目。上游提供了初始基础，我参与了当前仓库整套应用的构建设计，并在后续 7 次提交中完成本地模式、模型服务衔接、认证、进度与前后端合并。这里不展开业务数据、提示词和私有模型配置。</p><h2 id="这个仓库要解决什么问题"><a href="#这个仓库要解决什么问题" class="headerlink" title="这个仓库要解决什么问题"></a>这个仓库要解决什么问题</h2><p>项目要把 AI 对话、语音输入、语音输出、过程评估和报告生成放进同一个应用，同时允许使用在线模型与本地模型。除了普通用户的访谈流程，还需要登录、数据保存和管理界面。</p><p>难点在于这些能力来自不同运行环境。浏览器负责录音和交互，Next.js 负责页面与服务调用，PocketBase 负责认证和数据，本地 Python 后端还要运行 STT、LLM、TTS 与视觉服务。只把每个接口分别接通，整个访谈仍然可能在模式切换、连接中断或页面刷新时失去状态。</p><h2 id="我采用的整体方案"><a href="#我采用的整体方案" class="headerlink" title="我采用的整体方案"></a>我采用的整体方案</h2><p>我参与把仓库组织为本地 AI 后端、Next.js 前端和 PocketBase 三部分。</p><p>FastAPI 后端在启动时初始化 <code>VisionService</code>、<code>STTService</code>、<code>ToneService</code>、<code>BrainService</code> 和 <code>MouthService</code>，分别处理视觉、语音识别、语气、模型推理与语音合成。HTTP 接口承担文件上传、STT 和 OpenAI 兼容调用，WebSocket 路由承担需要连续返回文本、音频和轮次状态的实时访谈。</p><p>前端不直接把所有模型逻辑写进组件，而是在 <code>services</code> 下分别放置 Gemini、OpenAI、Qwen 和本地服务适配。<code>MainApp</code> 负责欢迎页、访谈、报告等应用状态，具体页面负责展示和输入。认证及存储通过 PocketBase 接入，服务端操作和 Cookie 再负责 Next.js 两侧的会话衔接。</p><p>这套结构不是我只在末尾补几个接口。我参与了从用户工作流到前端状态、服务适配、本地后端和数据层的整体整合，目标是让同一套界面可以在不同模型方案下完成一次完整评估。</p><h2 id="多模型调用怎么收口"><a href="#多模型调用怎么收口" class="headerlink" title="多模型调用怎么收口"></a>多模型调用怎么收口</h2><p>项目同时存在在线服务和本地服务。直接在 React 组件里到处判断提供方，会让聊天、STT、TTS 与报告各自保存一份配置。同一轮对话中，文本已经切到本地，报告却还在请求在线服务，这类问题很难从界面表面判断。</p><p>我的处理是把差异放进 service 层。组件提交统一输入，服务层负责 URL、鉴权、请求体和响应格式转换。对于本地后端，我还提供 OpenAI 兼容的 <code>/v1/chat/completions</code>，让已有调用路径可以复用，不需要每个页面重新认识一套私有协议。</p><p>本地后端内部也按能力拆开。语音先由 STT 转成文本，Brain 处理上下文，Mouth 生成音频；视觉与语气分析保持独立。服务之间通过明确数据传递，而不是相互读取页面状态。</p><h2 id="实时访谈需要完整的状态协议"><a href="#实时访谈需要完整的状态协议" class="headerlink" title="实时访谈需要完整的状态协议"></a>实时访谈需要完整的状态协议</h2><p>WebSocket 中会连续出现 LLM 文本、TTS 音频、进度和报告就绪等消息。我为消息增加类型与完成标记，前端按类型处理，不把所有字符串直接拼进回答。</p><p>一轮访谈要区分正常完成、用户中止、服务异常和连接断开。文本最后一个分片到达不代表音频已经播放完，报告生成也不应该在轮次状态尚未落定时启动。把这些条件写进协议后，进度条才能由真实轮次驱动，而不是用定时动画假装前进。</p><p>项目后期也尝试把部分本地调用切到纯 HTTP 的 OpenAI 兼容模式，以降低部署复杂度。仓库中保留 WebSocket 路由和轻量 HTTP 路径，是两种运行方式合并过程中留下的状态。它们各自能解决不同场景，接下来需要继续收敛前端究竟使用哪一种作为默认路径。</p><h2 id="认证与前后端合并"><a href="#认证与前后端合并" class="headerlink" title="认证与前后端合并"></a>认证与前后端合并</h2><p>认证链路横跨 PocketBase、服务端操作、浏览器 Cookie 和客户端状态。登录接口返回成功，不代表所有页面已经拿到同一会话。我逐层检查 Cookie 写入、服务端读取、客户端初始化与退出清理，让认证只有明确来源。</p><p>两次较大的前后端合并也不只是处理 Git 冲突。接口字段、可选类型和状态含义变化，可能完全通过 TypeScript 检查，却在真实流程中返回空值。因此每次合并后都要走一遍登录、开始访谈、录音、STT、流式回答、进度、报告和结果保存。</p><h2 id="截至这次提交的复盘"><a href="#截至这次提交的复盘" class="headerlink" title="截至这次提交的复盘"></a>截至这次提交的复盘</h2><p>这一版已经形成完整应用骨架：Next.js 和 React 负责交互，TypeScript service 层隔离模型差异，FastAPI 组织本地 AI 能力，REST 与 WebSocket 传输不同类型任务，PocketBase 提供认证和存储。</p><p>当前最明显的问题是本地模式仍有 HTTP 与 WebSocket 两条演进路线，部分进度和报告接口为了兼容无数据库模式保留了模拟返回。下一阶段需要明确默认协议，并让演示数据与真实结果有清楚标识。</p><p>这次构建让我看到，多模型应用真正难的不是多放几个模型名称，而是让认证、消息生命周期、语音、报告和持久化对同一轮会话形成一致理解。把这些边界定下来，模型才可以被替换而不拖动整个界面。</p>]]></content>
+        <content type="html"><![CDATA[<p><a href="https://github.com/HYK-X/AI_Psyc_Project">AI_Psyc_Project</a> 是一个私有 Fork 项目。上游提供了最初的项目基础，我参与了当前应用的整体构建设计，并继续完成本地模型、实时会话、认证、进度和报告等部分的整合。</p><p>如果只把它理解成一个带语音输入的聊天网页，会漏掉这个项目真正想做的事。产品体验上，我希望它接近 GPT Live 或豆包电话：用户不用对着一张问卷逐项选择，而是通过连续的语音和视频对话完成心理测评。系统既要听懂说了什么，也要结合画面、语气和上下文决定下一轮怎么问，最后把整段会话整理成结构化结果。</p><p>这里不展开业务数据、测评量表、私有提示词和模型配置，只记录我怎样把多模态模型做成一套可以运行的应用。</p><h2 id="从聊天框改成一次完整的测评会话"><a href="#从聊天框改成一次完整的测评会话" class="headerlink" title="从聊天框改成一次完整的测评会话"></a>从聊天框改成一次完整的测评会话</h2><p>普通聊天应用只需要维护消息列表。实时心理测评还要处理麦克风、摄像头、语音播放、测评轮次、进度和报告状态。用户可能打断模型，也可能在模型说话时继续输入；网络中断后，页面不能把已经完成的轮次当成没发生过。</p><p>我把一次测评看成一条连续的数据链路：</p><pre><code class="highlight mermaid">flowchart LR    A[&quot;浏览器：语音、视频与文字&quot;] &lt;--&gt; B[&quot;Next.js 会话层&quot;]    B &lt;--&gt; C[&quot;FastAPI 实时网关&quot;]    C --&gt; D[&quot;STT / 视觉 / 语气分析&quot;]    D --&gt; E[&quot;多模态模型与测评逻辑&quot;]    E --&gt; F[&quot;TTS 语音合成&quot;]    F --&gt; C    E --&gt; G[&quot;测评进度与报告&quot;]    G --&gt; H[&quot;认证与结果存储&quot;]</code></pre><p>浏览器采集语音和视频，后端完成语音识别、视觉理解和语气分析，再把这些信息交给负责对话与测评的模型。模型回复一边以文本返回，一边交给 TTS 合成语音。测评达到条件后，报告生成和结果保存才会启动。</p><p>这和“调用一次大模型接口”差别很大。模型只是中间一环，前后的媒体处理、状态同步和错误恢复同样决定体验能不能成立。</p><h2 id="多模态能力怎样组织"><a href="#多模态能力怎样组织" class="headerlink" title="多模态能力怎样组织"></a>多模态能力怎样组织</h2><p>本地 Python 后端把能力拆成 <code>VisionService</code>、<code>STTService</code>、<code>ToneService</code>、<code>BrainService</code> 和 <code>MouthService</code>。它们分别负责视觉、语音识别、语气分析、模型推理和语音合成，FastAPI 再负责对外组织接口。</p><p>我没有让这些服务互相读取页面状态。每一轮先形成明确输入，再把识别文本、视觉信息和必要的会话上下文送入模型。模型输出也不会直接塞进播放器，而是拆成文本、音频、轮次状态和测评进度。这样替换某个 STT 或 TTS 时，不需要重写整段对话逻辑。</p><p>在线模型与本地模型也收口到前端的 service 层。组件只提交统一的会话输入，具体使用 Gemini、OpenAI、Qwen 还是本地服务，由适配器处理 URL、鉴权、请求结构和返回格式。本地后端还提供 OpenAI 兼容接口，让已有调用路径可以复用。</p><h2 id="实时通话最难的是状态"><a href="#实时通话最难的是状态" class="headerlink" title="实时通话最难的是状态"></a>实时通话最难的是状态</h2><p>WebSocket 会连续返回识别结果、模型文本、合成音频、进度和报告就绪等消息。文本输出结束不等于这一轮已经结束，因为音频可能还在生成或播放。用户按下停止，也不代表后端任务已经取消。</p><p>我把前端状态拆成几个明确阶段：等待输入、采集中、识别中、生成中、播放中、被中止和发生错误。消息带有类型和完成标记，前端按协议更新状态，不再看到一个字符串就直接拼进对话框。</p><p>这套状态还要处理几个容易漏掉的边界：</p><ul><li>用户说话时打断正在播放的回答；</li><li>页面刷新或连接断开后，不重复提交上一轮音频；</li><li>文本已完成但 TTS 尚未完成时，不提前进入下一轮；</li><li>测评进度由真实轮次推进，而不是定时动画；</li><li>报告只在会话状态落定后生成，并能区分真实结果与演示数据。</li></ul><p>后来项目也尝试把部分调用改成轻量的 HTTP 和 OpenAI 兼容模式。HTTP 更容易部署，WebSocket 更适合持续媒体流。两条路径保留下来，是应用从原型走向部署时的一次取舍，而不是简单的接口重复。</p><h2 id="我怎样考虑本地模型部署"><a href="#我怎样考虑本地模型部署" class="headerlink" title="我怎样考虑本地模型部署"></a>我怎样考虑本地模型部署</h2><p>本地模式不是把 API 地址改成 <code>localhost</code>。模型启动时间、显存占用、音频格式、并发和服务退出都要有人负责。我的处理方式是让 FastAPI 作为统一入口，在启动阶段初始化需要的模型服务，前端不直接感知每个模型进程。</p><p>部署时我重点处理了这些问题：</p><ul><li>模型服务与 Web 前端分开运行，避免 Next.js 进程承担推理任务；</li><li>使用统一适配层切换在线和本地模型，不把提供方判断散落在组件里；</li><li>对长连接、超时、取消和异常建立统一消息协议；</li><li>把认证、会话和测评结果交给 PocketBase 管理；</li><li>私有模型地址、密钥和提示词保留在服务端，不下发到浏览器；</li><li>允许部分能力缺失时降级，而不是让整次测评直接崩溃。</li></ul><p>这部分工作让我真正接触到大模型应用部署的完整链路：浏览器媒体采集、实时传输、模型编排、服务生命周期、认证、持久化和结果展示。模型效果很重要，但模型之外的工程代码更多。</p><h2 id="认证、隐私和使用边界"><a href="#认证、隐私和使用边界" class="headerlink" title="认证、隐私和使用边界"></a>认证、隐私和使用边界</h2><p>认证链路横跨 PocketBase、Next.js 服务端操作、Cookie 和客户端状态。登录接口返回成功，不代表每个页面已经拿到同一会话。我逐层检查 Cookie 写入、服务端读取、客户端初始化和退出清理，避免报告与错误用户绑定。</p><p>心理测评还涉及语音、图像和个人结果，部署时不能只考虑“接口能不能通”。原始媒体是否保存、保存多久、谁能读取、日志里是否包含敏感内容，都需要明确。项目定位也是辅助测评和交互验证，不把模型输出写成医疗诊断，更不能替代专业人员。</p><h2 id="这次项目给我的经验"><a href="#这次项目给我的经验" class="headerlink" title="这次项目给我的经验"></a>这次项目给我的经验</h2><p>AI_Psyc_Project 最后形成了一套完整的大模型应用骨架：Next.js 负责用户交互，FastAPI 组织多模态能力，REST 与 WebSocket 处理不同类型的任务，PocketBase 管理认证和数据，本地与在线模型通过适配层切换。</p><p>我在这个项目里投入最多的并不是页面样式，而是让语音、视频、模型回复、测评进度和报告属于同一次会话。实时多模态应用一旦没有统一状态，任何一个看似很小的延迟或重连都会把体验打断。把这些边界理顺以后，才谈得上继续换模型、压缩延迟和部署到更多环境。</p>]]></content>
       
       
       <categories>
@@ -208,11 +208,122 @@
             
             <tag> 人工智能 </tag>
             
+            <tag> 多模态大模型 </tag>
+            
+            <tag> 实时语音 </tag>
+            
             <tag> Next.js </tag>
             
             <tag> FastAPI </tag>
             
             <tag> WebSocket </tag>
+            
+            <tag> 大模型应用部署 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制</title>
+      <link href="/2025/11/27/ambient-car-light-artnet-android/"/>
+      <url>/2025/11/27/ambient-car-light-artnet-android/</url>
+      
+        <content type="html"><![CDATA[<p>本科阶段做车辆氛围灯项目时，我想解决的不是“在手机上选一个颜色”，而是让灯光能跟着用户喜欢的画面变化。用户可以从相册、相机或系统壁纸中选图，应用提取其中的主色，再把这些颜色分配到车内 LED 灯带上。</p><p>我把它做成了一套 Android 应用：Kotlin 负责业务逻辑，Jetpack Compose 负责界面，颜色提取在手机本地完成，最后通过 Art-Net 协议直接控制灯光设备。</p><h2 id="从一张图片到一条灯带"><a href="#从一张图片到一条灯带" class="headerlink" title="从一张图片到一条灯带"></a>从一张图片到一条灯带</h2><p>整个流程可以概括为：</p><pre><code class="highlight mermaid">flowchart LR    A[&quot;相册 / 相机 / 系统壁纸&quot;] --&gt; B[&quot;图片缩放与取色&quot;]    B --&gt; C[&quot;Palette 或 K-Means&quot;]    C --&gt; D[&quot;亮度、饱和度与互补色处理&quot;]    D --&gt; E[&quot;LED 颜色插值&quot;]    E --&gt; F[&quot;Art-Net DMX 数据包&quot;]    F --&gt; G[&quot;车内 LED 控制器&quot;]</code></pre><p>图片输入有三种。相册适合提前准备主题图，相机可以现场拍摄，系统壁纸则让灯光自动延续手机当前的视觉风格。图片加载后先缩小尺寸，避免直接在原图上做聚类拖慢界面。</p><p>我提供了两套取色方法。第一套使用 Android Palette，从图片色块中筛掉过暗、饱和度过低的颜色，再按出现频率选择主色。如果画面接近单色，还可以补一组互补色，让灯带不至于全部挤在一个色相里。</p><p>第二套是 K-Means。图片会先降采样到大约 <code>100 x 100</code>，像素转换成 RGB 点，再进行有限轮次的聚类。这里不追求图像分析上的极致精度，目标是在手机上快速得到肉眼合理的几组颜色。用户可以在设置中切换算法，也可以调整颜色数量、最低亮度和最低饱和度。</p><h2 id="Android-端怎样组织状态"><a href="#Android-端怎样组织状态" class="headerlink" title="Android 端怎样组织状态"></a>Android 端怎样组织状态</h2><p>应用采用 MVVM。Compose 页面负责展示和交互，<code>AmbientLightViewModel</code> 维护图片、提取结果、连接状态和全部设置，<code>SettingsRepository</code> 通过 DataStore 保存语言、算法、LED 数量、阈值和 Art-Net 地址。</p><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Compose Screens</span><br><span class="line">      ↓</span><br><span class="line">AmbientLightViewModel + StateFlow</span><br><span class="line">      ↓</span><br><span class="line">Color Extractors / SettingsRepository / ArtNetController</span><br></pre></td></tr></table></figure><p>这样做有一个直接好处：设置页修改算法或阈值后，ViewModel 可以重新计算当前图片，而不需要页面自己保存一份颜色状态。相机、相册和壁纸最后也都进入同一个 <code>onImageSelected</code> 流程。</p><p>界面使用 Jetpack Compose 和 Material 3，主页面包含图片预览、提取色板、LED 渐变预览、图库、相机和壁纸入口。设置页处理中文&#x2F;英文、算法、颜色数量、过滤阈值、LED 数量以及目标设备 IP。保存设置时统一提交，避免拖动多个滑块时持续写入 DataStore 和重复计算。</p><h2 id="Art-Net-控制不是普通网络请求"><a href="#Art-Net-控制不是普通网络请求" class="headerlink" title="Art-Net 控制不是普通网络请求"></a>Art-Net 控制不是普通网络请求</h2><p>取出几种颜色后，我按 LED 在灯带上的位置做分段插值，把离散色板变成连续渐变。每颗 RGB 灯占三个 DMX 通道，数据再封装成 ArtDmx UDP 包发送到端口 <code>6454</code>。</p><p><code>ArtNetController</code> 会预先写好固定包头并复用缓冲区，序列号在 <code>1-255</code> 之间循环。DMX 数据长度需要是偶数，长度字段使用大端序；Art-Net 操作码本身又是小端序。这些细节如果写错，手机端看起来发送成功，控制器却不会响应。</p><p>为了避免每次状态变化都创建 Socket 或堆积 UDP 包，我让 DatagramSocket 在连接期间复用，并把更新频率限制在约 30 FPS。新颜色到来时可以取消尚未执行的更新，只发送较新的结果。对于氛围灯来说，这个速度已经足够平滑。</p><h2 id="我在实现中遇到的边界"><a href="#我在实现中遇到的边界" class="headerlink" title="我在实现中遇到的边界"></a>我在实现中遇到的边界</h2><p>Android 权限和硬件协议是这个项目里最容易被忽略的两部分。相机需要运行时权限和 FileProvider，读取系统壁纸在不同 Android 版本上也有兼容差异。网络连通只说明 UDP Socket 可用，不代表 Art-Net 设备真的接收了灯光数据，因此连接状态还需要更明确的设备反馈。</p><p>另一个限制来自单个 DMX Universe。一个 Universe 最多 512 个通道，而 RGB 灯每颗占三个通道，所以单 Universe 实际只能完整容纳 170 颗 RGB 灯。应用设置允许更大的 LED 数量，后续应该在输入端限制，或者增加多 Universe 分包，不能只扩大数组。</p><p>测试方面，我为颜色提取、设置存储和 Art-Net 控制准备了基础用例，但真实灯光效果仍然需要在不同图片、不同灯珠数量和实际控制器上做集成测试。UDP 无连接的特性决定了“函数没有抛异常”并不等于硬件工作正常。</p><h2 id="回头看这个项目"><a href="#回头看这个项目" class="headerlink" title="回头看这个项目"></a>回头看这个项目</h2><p>AmbientCarLight 把 Android、图像处理和硬件控制连到了一起。它不是单纯的取色 Demo：图片输入、算法选择、状态持久化、灯带插值和 Art-Net 发包都在同一条用户流程里。</p><p>这次实现让我更熟悉 Compose 的状态组织，也第一次认真处理实时灯光协议里的包结构、更新频率和硬件边界。以后再做类似项目，我会更早加入设备发现、Universe 配置和真实回执，把“能发数据”推进到“能确认整套设备正在按预期运行”。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Android </tag>
+            
+            <tag> Kotlin </tag>
+            
+            <tag> Jetpack Compose </tag>
+            
+            <tag> 图像处理 </tag>
+            
+            <tag> Art-Net </tag>
+            
+            <tag> 物联网 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>航天干扰仿真自动化：从参数录入、截图识别到报告生成</title>
+      <link href="/2025/11/23/space-simulation-automation-pipeline/"/>
+      <url>/2025/11/23/space-simulation-automation-pipeline/</url>
+      
+        <content type="html"><![CDATA[<p>这套航天仿真自动化程序，是我本科阶段写过体量最大的一组桌面自动化脚本。原来的工作需要从 Word 里找轨道、频段、地球站和链路参数，再逐项填进 Visualyse，等待仿真完成后截图、抄数、画图，最后把结果放进固定格式的报告。</p><p>单次操作并不难，难的是对象一多，重复点击和复制就会占掉大量时间，而且任何一处填错都会传到最终报告。我没有把它写成一个几千行的单体脚本，而是拆成参数整理、软件填写、结果截图、OCR、绘图和报告生成几组工具。</p><h2 id="整条流水线"><a href="#整条流水线" class="headerlink" title="整条流水线"></a>整条流水线</h2><pre><code class="highlight mermaid">flowchart TD    A[&quot;原始 Word 参数文档&quot;] --&gt; B[&quot;结构解析与分单元整理&quot;]    B --&gt; C[&quot;轨道 / 频段 / 地球站 / 链路 Excel&quot;]    C --&gt; D[&quot;Visualyse GUI 自动填写&quot;]    D --&gt; E[&quot;运行仿真并批量截图&quot;]    E --&gt; F[&quot;PaddleOCR 提取最坏值与时长&quot;]    D --&gt; G[&quot;仿真日志&quot;]    G --&gt; H[&quot;Matplotlib 绘制干扰曲线&quot;]    F --&gt; I[&quot;上下行结果汇总与校验&quot;]    H --&gt; J[&quot;docxtpl 模板报告&quot;]    I --&gt; J    J --&gt; K[&quot;Word COM 转换最终 DOC&quot;]</code></pre><p>这几个模块可以分开调试，但它们约定了相同的目录和命名规则。截图编号、Excel 文件名和模板变量一旦对不上，后面的 OCR 和报告就找不到输入，所以文件协议和代码本身一样重要。</p><h2 id="先把-Word-参数变成机器能读的表"><a href="#先把-Word-参数变成机器能读的表" class="headerlink" title="先把 Word 参数变成机器能读的表"></a>先把 Word 参数变成机器能读的表</h2><p><code>AutoUnZiper</code> 负责解析原始 Word。它按标题层级遍历段落、表格和图片，把每个一级标题拆成独立处理单元，再生成对应的内容提取文档与数据汇总表。</p><p>接下来脚本会从汇总表继续整理出申报频段、轨道参数、地球站信息和链路参数。频率范围需要兼容 MHz、GHz、不同连接符和中英文标点，最后统一成 MHz 区间。两组频段存在交集时，才继续生成对应的上行或下行参数。</p><p>这一步看似只是格式转换，实际解决了后续自动填写最难的问题：GUI 脚本不应该再理解几十种 Word 排版。它只读取列名和行数据，输入结构稳定以后，软件自动化才有可能重复执行。</p><p>归档里有大量已经拆分好的 Excel、内容提取文档和图片，说明这部分不是只针对一个样例写的。不同文档的标题、空表、缺失列和重复波束名都出现过，我在代码里逐步补上了标准化、默认值和日志。</p><h2 id="在没有-API-的桌面软件里自动填写"><a href="#在没有-API-的桌面软件里自动填写" class="headerlink" title="在没有 API 的桌面软件里自动填写"></a>在没有 API 的桌面软件里自动填写</h2><p>Visualyse 没有适合这套流程的稳定批量接口，所以 <code>AutoSetter</code> 使用 PyWinAuto 的 UI Automation 查找窗口和控件，再用 PyAutoGUI 补充鼠标、滚轮、拖动和截图。</p><p>我没有完全依赖固定坐标。程序先查找可见的 Visualyse 进程，连接主窗口，再按控件文本和类型定位 TreeItem、Edit、Button 等元素。确实无法通过 UIA 操作的区域，才根据窗口边界和相邻控件位置计算点击坐标。</p><p>自动填写分成几组动作：</p><ul><li>建立地球站并填写经纬度；</li><li>建立卫星或轨道对象并填写半长轴、偏心率、倾角等参数；</li><li>复制和配置上下行链路；</li><li>根据频率重叠结果增加干扰关系；</li><li>保存、启动仿真，并等待运行状态结束；</li><li>展开指定结果项，按固定规则截取设置与统计画面。</li></ul><p>长时间桌面自动化必须能停。我给程序增加了全局运行状态和键盘监听，按 <code>Esc</code> 或 <code>Ctrl+C</code> 可以中止；每个大步骤执行前都会检查状态。窗口滚动后，脚本还会重新确认控件是否进入可见区域，而不是盲点原坐标。</p><h2 id="截图不能只靠人工抄数"><a href="#截图不能只靠人工抄数" class="headerlink" title="截图不能只靠人工抄数"></a>截图不能只靠人工抄数</h2><p>仿真结果中的最坏值、超标时长和工作时长来自界面截图。<code>AutoOCR</code> 使用 PaddleOCR 3.0 的中文模型在 CPU 上识别，再把一张图里的文本先拼成完整字符串，最后用正则提取数据。</p><p>先拼接再匹配是我后来补上的改动。早期逐行匹配时，<code>Threshold is exceeded for ... out of ...</code> 这类信息只要被 OCR 拆成两行，就会漏掉。完整文本能够容忍换行和部分空格变化，正则也同时兼容几种常见识别结果。</p><p>截图按组编号，每组最多包含下行长时、下行短时、下行工作时长、上行最坏值和上行工作时长。脚本会自动判断一组里实际有哪些图片，不强迫所有场景同时存在上下行数据。</p><p>提取完成后，我计算干扰占比，并检查上下行工作时长是否一致、长短时最坏值是否一致，以及指标是否越过设定阈值。异常单元会在 Excel 中用条件格式标出，方便人工复核。OCR 的作用不是替代复核，而是把人工注意力集中到少数可疑结果上。</p><h2 id="日志绘图和报告模板"><a href="#日志绘图和报告模板" class="headerlink" title="日志绘图和报告模板"></a>日志绘图和报告模板</h2><p>截图之外，仿真软件还会输出按时间排列的日志。<code>AutoDrawer</code> 用 Pandas 读取日志，Matplotlib 和 Seaborn 绘制干扰曲线，并画出对应阈值线。每张图按约定编号保存，后面的 Word 模板可以直接找到。</p><p><code>AutoWriter</code> 读取整理后的轨道、频段、地球站、链路和上下行结果，再用 <code>docxtpl</code> 把文字、表格与图片填入模板。项目同时维护了不同仿真对象和两套报告版式，公共逻辑保持一致，差异留在模板与映射里。</p><p>报告先生成临时 <code>.docx</code>，随后通过 Word COM 转成要求的 <code>.doc</code> 格式。转换成功后删除临时文件；如果 Word COM 失败，则保留 <code>.docx</code> 和错误日志，避免整次仿真结果因为最后一步失败而丢失。</p><h2 id="我现在会怎样继续改"><a href="#我现在会怎样继续改" class="headerlink" title="我现在会怎样继续改"></a>我现在会怎样继续改</h2><p>这套程序已经把原本分散的人工步骤连成了可重复流程，但它仍然带着很明显的项目现场痕迹：部分路径和模式写在脚本配置里，五个模块需要按顺序运行，GUI 自动化也会受到窗口缩放和软件版本影响。</p><p>如果继续维护，我会先增加统一的 YAML 配置和任务清单，再用一个调度入口串联模块，同时为每个处理单元保存状态。某个单元 OCR 失败时，只重跑这一单元，不必重新填写全部仿真。GUI 部分还应该记录控件截图和失败现场，减少远程排错时的信息缺失。</p><p>这次项目让我明白，桌面自动化的价值不只是替人点击。真正省时间的是把输入、软件状态、截图、结构化结果和最终文档放进同一条可追踪的数据流。只自动填写前半段，后面仍靠人工抄表，整体效率不会有本质变化。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Python </tag>
+            
+            <tag> 自动化 </tag>
+            
+            <tag> PyWinAuto </tag>
+            
+            <tag> PaddleOCR </tag>
+            
+            <tag> Excel </tag>
+            
+            <tag> Word </tag>
+            
+            <tag> 航天仿真 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>我怎样制作软件使用教程：键鼠显示、鼠标缩放和自动截图</title>
+      <link href="/2025/11/02/software-tutorial-production-workflow/"/>
+      <url>/2025/11/02/software-tutorial-production-workflow/</url>
+      
+        <content type="html"><![CDATA[<p>之前为了教新生使用我写的自动化程序，我需要录一套软件教程。真正开始做以后才发现，普通录屏只能把画面录下来，却不一定能把操作讲清楚：鼠标指针太小，快捷键没有提示，界面上的文字一缩就看不见。要是改做图文教程，几十张截图又得一张张截、一张张标。</p><p>我在论坛和 GitHub 上找了一圈，最后把需求拆成了三件事：显示键鼠操作、让录制画面跟随鼠标缩放，以及自动记录每一步操作。下面是我试过的工具和目前仍在使用的组合。</p><h2 id="把键鼠操作显示出来"><a href="#把键鼠操作显示出来" class="headerlink" title="把键鼠操作显示出来"></a>把键鼠操作显示出来</h2><h3 id="直接用-keyviz"><a href="#直接用-keyviz" class="headerlink" title="直接用 keyviz"></a>直接用 keyviz</h3><p>如果不想折腾 OBS，我最推荐 <a href="https://mularahul.github.io/keyviz/">keyviz</a>。安装后就能把按键和鼠标点击显示在屏幕上，位置、颜色、大小和动画都可以调整。</p><p>它的优点是简单，开着就能用，平时做演示也方便。它采用屏幕顶层渲染，因此提示会同时出现在我自己的屏幕上。部分全屏程序可能把覆盖层挡住，遇到这种情况就需要换成 OBS 内部叠加。</p><p><img src="/assets/software-tutorial-production-workflow/keyviz-mouse.gif" alt="keyviz 的鼠标点击显示效果"></p><p><img src="/assets/software-tutorial-production-workflow/keyviz-keyboard.gif" alt="keyviz 的键盘输入显示效果"></p><p><img src="/assets/software-tutorial-production-workflow/keyviz-settings.png" alt="keyviz 设置界面"></p><p>同类工具还有 <a href="https://github.com/Code52/carnac">Carnac</a>、<a href="https://github.com/soarqin/KeyCastOW">KeyCastOW</a>、<a href="https://gitlab.com/screenkey/screenkey">Screenkey</a> 和 <a href="https://keypressosd.com/">KeyPress OSD</a>。Carnac 与 KeyCastOW 更适合 Windows，Screenkey 主要面向 Linux。它们解决的是同一个问题，选一个在自己的系统上稳定运行的就够了。</p><h3 id="在-OBS-里用-input-overlay"><a href="#在-OBS-里用-input-overlay" class="headerlink" title="在 OBS 里用 input-overlay"></a>在 OBS 里用 input-overlay</h3><p>有时我不希望键鼠提示挡住自己操作，只想让观众在录像里看到。这时我会用 <a href="https://github.com/univrsal/input-overlay">OBS input-overlay</a>。提示作为 OBS 来源叠加在成片中，不会覆盖实际桌面，录制全屏程序时也更稳定。</p><p>插件有很大的自定义空间。除了键盘、鼠标布局，还可以使用项目里的 <code>input-history-windows</code> 预设显示按键历史。安装后要到 OBS 的“工具 -&gt; 输入叠加设置 -&gt; 远程连接”，勾选“通过 websocket 服务器转发事件”，否则输入历史可能没有反应。</p><p><img src="/assets/software-tutorial-production-workflow/obs-input-overlay.jpeg" alt="OBS input-overlay 的配置与显示效果"></p><p>如果还需要换一套更醒目的鼠标样式，可以试试 <a href="https://github.com/upgradeQ/cursor-skin-fx">cursor-skin-fx</a>。我不会为了好看加太多光效，但在深色软件界面里，给指针增加一点轮廓确实更容易看清。</p><p><img src="/assets/software-tutorial-production-workflow/cursor-skin-fx.png" alt="cursor-skin-fx 的鼠标样式效果"></p><h2 id="让录制画面跟着鼠标缩放"><a href="#让录制画面跟着鼠标缩放" class="headerlink" title="让录制画面跟着鼠标缩放"></a>让录制画面跟着鼠标缩放</h2><p>键鼠提示解决了“做了什么”，界面细节仍然可能太小。这里有两种思路：录完再决定哪里放大，或者在录制时直接控制镜头。</p><h3 id="Cap：先录制，后处理"><a href="#Cap：先录制，后处理" class="headerlink" title="Cap：先录制，后处理"></a>Cap：先录制，后处理</h3><p><a href="https://github.com/CapSoftware/Cap">Cap</a> 是一款开源录屏工具。它会先保留完整录制，再让我在编辑阶段选择哪些片段跟随鼠标、何时缩放。</p><p>这种方式容错率高。录制时不必惦记缩放快捷键，讲错了也能在后期调整。代价是多一道编辑与导出流程，我当时使用时也觉得导出偏慢，画质和速度需要自己取舍。</p><p><img src="/assets/software-tutorial-production-workflow/cap-editor.jpeg" alt="Cap 的录制编辑界面"></p><h3 id="obs-zoom-to-mouse：边录边缩放"><a href="#obs-zoom-to-mouse：边录边缩放" class="headerlink" title="obs-zoom-to-mouse：边录边缩放"></a>obs-zoom-to-mouse：边录边缩放</h3><p>我更常用的是 <a href="https://github.com/BlankSourceCode/obs-zoom-to-mouse">obs-zoom-to-mouse</a>。它在 OBS 录制过程中根据鼠标位置移动放大区域，通过快捷键控制放大和恢复，录完基本就是成片。</p><p>上游版本当时没有适配我使用的新版 OBS，所以我整理了中文版本 <a href="https://github.com/HYK-X/obs-zoom-to-mouse-zh">obs-zoom-to-mouse-zh</a>，补了高版本兼容和中文说明。这个项目的实现与维护过程，我也单独写过一篇<a href="/2025/11/02/obs-zoom-to-mouse-zh-maintenance/">复盘记录</a>。</p><p><img src="/assets/software-tutorial-production-workflow/obs-zoom-to-mouse-zh.gif" alt="obs-zoom-to-mouse-zh 的实时缩放效果"></p><p>实时缩放效率很高，也有一个很直接的问题：录制时缩错了，后期没有原始全画面可以重新取景。我一般会用副屏监看 OBS 预览，确认画面确实跟上了鼠标。</p><p>类似工具还有 <a href="https://focusee.imobie.com/">FocuSee</a>、<a href="https://screen.studio/">Screen Studio</a>、<a href="https://github.com/xushengfeng/eSearch">eSearch</a> 和微软的 <a href="https://learn.microsoft.com/zh-cn/sysinternals/downloads/zoomit">ZoomIt</a>。FocuSee 支持 Windows 和 macOS，Screen Studio 主要面向 macOS；eSearch 是跨平台工具；ZoomIt 更像演示时临时放大和标注的工具。它们的工作流不完全一样，不能只看最终动效来选。</p><h2 id="自动生成带截图的步骤文档"><a href="#自动生成带截图的步骤文档" class="headerlink" title="自动生成带截图的步骤文档"></a>自动生成带截图的步骤文档</h2><p>有些内容做成视频反而不方便查。比如安装、配置和排错步骤，我更愿意整理成带截图的 SOP。</p><h3 id="网页操作：Scribe、Tango-和-igenflow"><a href="#网页操作：Scribe、Tango-和-igenflow" class="headerlink" title="网页操作：Scribe、Tango 和 igenflow"></a>网页操作：Scribe、Tango 和 igenflow</h3><p><a href="https://scribe.com/">Scribe</a>、<a href="https://www.tango.ai/">Tango</a> 和 <a href="http://igenflow.com/">igenflow</a> 可以记录浏览器里的点击过程，自动给每一步配截图和初步说明。短流程生成得很快，适合后台操作、网页配置和产品使用说明。</p><p>它们依赖浏览器扩展或网页环境，桌面软件通常录不到。自动生成的文字也只能当草稿，我还是会重新删掉多余步骤，统一按钮名称，并补上容易出错的地方。</p><p><img src="/assets/software-tutorial-production-workflow/scribe.jpeg" alt="Scribe 自动生成的步骤文档"></p><h3 id="Windows-桌面软件：PSR-步骤记录器"><a href="#Windows-桌面软件：PSR-步骤记录器" class="headerlink" title="Windows 桌面软件：PSR 步骤记录器"></a>Windows 桌面软件：PSR 步骤记录器</h3><p>Windows 自带的 PSR（问题步骤记录器）更适合桌面程序。在运行窗口输入 <code>psr</code> 就能打开。开始记录后，它会根据点击自动截图、高亮操作区域，并把控件名称和操作说明一起写进报告，最后导出为可以用浏览器打开的 <code>.mht</code> 文件。</p><p><img src="/assets/software-tutorial-production-workflow/windows-psr.png" alt="Windows PSR 生成的操作步骤"></p><p>PSR 很省事，但不能再把它当成长久方案。微软已经将它标记为弃用，并说明会在后续 Windows 版本中移除。现阶段还能用就可以继续用，同时最好保留原始截图，方便以后迁移到其他文档工具。具体用法和替代建议可以查看<a href="https://learn.microsoft.com/zh-cn/office/troubleshoot/settings/how-to-use-problem-steps-recorder">微软的 PSR 说明</a>。</p><h2 id="我最后采用的工作流"><a href="#我最后采用的工作流" class="headerlink" title="我最后采用的工作流"></a>我最后采用的工作流</h2><p>现在录视频时，我用 keyviz 增强鼠标提示，在 OBS 中用 input-overlay 显示键盘操作，再用 obs-zoom-to-mouse 控制局部放大。这样录制完成后通常只需要剪掉开头和停顿，不必重新做缩放动画。</p><p>需要图文说明时，我先用 PSR 留下完整操作记录，再挑选真正需要的截图。初稿会交给 Gemini 帮忙整理措辞，但软件名称、按钮路径和报错信息必须自己核对。涉及账号、密钥或内部系统的截图，我不会直接上传到在线工具。</p><p>这套组合不是固定答案。需要反复修改镜头时，Cap 的后期工作流更稳；只录网页操作时，Scribe 一类工具更省时间；想快速完成一段桌面软件演示，我还是会选 OBS。先看自己最不想花时间的环节，再决定装什么工具，比把所有插件都塞进录制流程实际得多。</p><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ul><li><a href="https://linux.do/t/topic/1115680?u=tranquility">我在 LINUX DO 发布的原帖</a></li><li><a href="https://mularahul.github.io/keyviz/">keyviz</a></li><li><a href="https://github.com/univrsal/input-overlay">OBS input-overlay</a></li><li><a href="https://github.com/BlankSourceCode/obs-zoom-to-mouse">obs-zoom-to-mouse</a></li><li><a href="https://github.com/HYK-X/obs-zoom-to-mouse-zh">obs-zoom-to-mouse-zh</a></li><li><a href="https://learn.microsoft.com/zh-cn/office/troubleshoot/settings/how-to-use-problem-steps-recorder">Windows 问题步骤记录器说明</a></li></ul>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 效率工具 </tag>
+            
+            <tag> OBS </tag>
+            
+            <tag> 教程制作 </tag>
+            
+            <tag> 屏幕录制 </tag>
+            
+            <tag> SOP </tag>
             
         </tags>
       
@@ -244,6 +355,43 @@
             <tag> 开源 </tag>
             
             <tag> 脚本开发 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>芯片缺陷检测：把 YOLOv11 部署到树莓派并接入数据大屏</title>
+      <link href="/2025/10/19/yolov11-chip-defect-raspberry-pi-dashboard/"/>
+      <url>/2025/10/19/yolov11-chip-defect-raspberry-pi-dashboard/</url>
+      
+        <content type="html"><![CDATA[<p>本科阶段协助研究生准备华为杯时，我写了一套芯片表面缺陷检测程序。需求不只是拿一张图片跑出检测框，而是把模型放到树莓派一类边缘设备上，接入工业相机连续推理，发现异常时给出本地提示，并把结果送到数据大屏。</p><p>归档中的推理部署、海康相机接入、告警、数据库上传和大屏数据链路都由我完成。项目最终识别裂纹、边缘斑点、薄膜缺失、薄膜残留、氧化、凹坑、划痕和斑点八类问题。</p><h2 id="我先把目标定成一条完整检测链路"><a href="#我先把目标定成一条完整检测链路" class="headerlink" title="我先把目标定成一条完整检测链路"></a>我先把目标定成一条完整检测链路</h2><pre><code class="highlight mermaid">flowchart LR    A[&quot;海康工业相机&quot;] --&gt; B[&quot;树莓派采集进程&quot;]    B --&gt; C[&quot;YOLOv11 边缘推理&quot;]    C --&gt; D[&quot;检测框、类别与置信度&quot;]    D --&gt; E[&quot;本地预览 / 录像 / 蜂鸣器&quot;]    D --&gt; F[&quot;异常采样与 MySQL 上报&quot;]    F --&gt; G[&quot;趋势、分布与最近记录大屏&quot;]</code></pre><p>这条链路里，模型推理只占中间一段。前面要处理相机 SDK、取帧和断线重连，后面要处理中文类别映射、告警节流、录像、数据库异常以及展示端需要的数据格式。</p><h2 id="为树莓派准备模型和运行环境"><a href="#为树莓派准备模型和运行环境" class="headerlink" title="为树莓派准备模型和运行环境"></a>为树莓派准备模型和运行环境</h2><p>项目保留了 PyTorch、TorchScript 和 NCNN 几种模型形式。开发机上使用 <code>.pt</code> 权重最方便，部署到树莓派时则优先使用 NCNN，减少对完整 PyTorch 环境的依赖，也更适合 ARM CPU 推理。</p><p>推理入口基于 Ultralytics YOLO 和 OpenCV，统一支持单张图片、图片文件夹、视频、普通摄像头、RTSP 和海康相机。这样做方便我先在电脑上复现问题，再切到树莓派与工业相机，不必为每一种输入写一套后处理。</p><p>运行环境里的数据库、蜂鸣器和海康相机模块都按可选能力加载。某个模块缺失时，程序给出警告并关闭对应功能，模型推理仍然可以继续。这一点对边缘设备很重要，驱动或外设偶尔不可用时，不能让整个检测程序在 import 阶段退出。</p><h2 id="海康相机接入和实时推理"><a href="#海康相机接入和实时推理" class="headerlink" title="海康相机接入和实时推理"></a>海康相机接入和实时推理</h2><p>相机层单独封装初始化、状态和取帧接口。主循环只关心能否拿到一帧图像，不直接操作厂商 SDK。出现断线时可以触发重新连接，退出时则统一释放相机和 OpenCV 窗口。</p><p>每帧进入 YOLOv11 后，我按置信度阈值过滤结果，找到当前帧置信度最高的缺陷，完成英文类别到中文名称的映射。同时在原图上绘制检测框和标签，预览画面再叠加帧率、目标数量等运行信息。</p><p>程序可以保存单帧截图，也可以把带检测框的画面写成视频。蜂鸣器用于区分正常、异常和操作反馈，但它被放在可选模块里，不会因为音频设备初始化失败影响检测。</p><h2 id="为什么不能每一帧都写数据库"><a href="#为什么不能每一帧都写数据库" class="headerlink" title="为什么不能每一帧都写数据库"></a>为什么不能每一帧都写数据库</h2><p>视频中同一处缺陷可能连续出现几百帧。如果每帧都插入一条记录，数据库看到的不是“发生了多少次缺陷”，而是“这个缺陷在镜头里停留了多久”，大屏统计会被完全带偏。</p><p>我在检测端加入异常帧计数和采样策略，只在达到间隔时上传代表记录。上传内容收敛成四个字段：检测时间、是否异常、故障类型和置信度。数据库使用连接池，插入失败时可以回滚或重试，不让一次网络抖动中断相机推理。</p><p>这张最小数据表也是检测端与数据大屏之间的边界。大屏不需要知道 YOLO 的 Tensor 结构，只要按时间读取统一记录，就可以计算异常率、类别分布、置信度和近期趋势。为了在没有真实产线连续数据时验证展示效果，我还写了模拟数据生成脚本，按设定异常率和类别权重补充历史记录。</p><p>展示层和检测进程因此可以分开部署。树莓派只负责采集、推理和上报，数据大屏从数据库读取结果。即使大屏重启，边缘端仍能继续检测；相机端更新模型时，也不需要修改展示端字段。</p><h2 id="从-Demo-到部署，问题发生在哪里"><a href="#从-Demo-到部署，问题发生在哪里" class="headerlink" title="从 Demo 到部署，问题发生在哪里"></a>从 Demo 到部署，问题发生在哪里</h2><p>真正放到树莓派上以后，问题通常不在 <code>model.predict()</code> 这一行。</p><p>相机 SDK 与系统架构要匹配，OpenCV 预览不能抢占太多资源，模型格式要在速度和兼容性之间选择，录像又会增加磁盘写入压力。数据库上报也必须节流，否则网络等待会反过来拖慢取帧。</p><p>代码演进过程中，异常采样间隔曾在不同版本里出现过不同数值。更合适的做法是把阈值、上传间隔、模型路径和数据库连接全部放进配置文件或环境变量，而不是留在脚本常量里。归档中的数据库连接信息也不应该继续硬编码，正式部署必须改成环境变量并轮换凭据。</p><h2 id="这次项目留下的经验"><a href="#这次项目留下的经验" class="headerlink" title="这次项目留下的经验"></a>这次项目留下的经验</h2><p>这个项目让我把计算机视觉从训练结果推进到了边缘应用。YOLOv11 负责识别，但工业相机、树莓派运行环境、告警、数据库和数据大屏共同决定系统是否可用。</p><p>我后来做其他视觉项目时也沿用了这套思路：先定义输入与输出协议，再隔离硬件驱动和模型逻辑；检测结果先标准化，展示端只依赖稳定字段；可能失败的外部能力允许降级。这样模型可以换，设备可以换，整条链路不用推倒重来。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 项目复盘 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> OpenCV </tag>
+            
+            <tag> YOLOv11 </tag>
+            
+            <tag> 计算机视觉 </tag>
+            
+            <tag> 树莓派 </tag>
+            
+            <tag> MySQL </tag>
+            
+            <tag> 边缘计算 </tag>
+            
+            <tag> 数据可视化 </tag>
             
         </tags>
       
@@ -330,11 +478,11 @@
       
         <tags>
             
+            <tag> 计算机视觉 </tag>
+            
             <tag> 医学影像 </tag>
             
             <tag> YOLOv11-Pose </tag>
-            
-            <tag> 计算机视觉 </tag>
             
             <tag> Gradio </tag>
             

@@ -1,0 +1,538 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制 | Study-HYK</title><meta name="author" content="HYK"><meta name="copyright" content="HYK"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="本科阶段做车辆氛围灯项目时，我想解决的不是“在手机上选一个颜色”，而是让灯光能跟着用户喜欢的画面变化。用户可以从相册、相机或系统壁纸中选图，应用提取其中的主色，再把这些颜色分配到车内 LED 灯带上。 我把它做成了一套 Android 应用：Kotlin 负责业务逻辑，Jetpack Compose 负责界面，颜色提取在手机本地完成，最后通过 Art-Net 协议直接控制灯光设备。 从一张图片到一">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制">
+<meta property="og:url" content="https://learn.hykpromax.top/2025/11/27/ambient-car-light-artnet-android/index.html">
+<meta property="og:site_name" content="Study-HYK">
+<meta property="og:description" content="本科阶段做车辆氛围灯项目时，我想解决的不是“在手机上选一个颜色”，而是让灯光能跟着用户喜欢的画面变化。用户可以从相册、相机或系统壁纸中选图，应用提取其中的主色，再把这些颜色分配到车内 LED 灯带上。 我把它做成了一套 Android 应用：Kotlin 负责业务逻辑，Jetpack Compose 负责界面，颜色提取在手机本地完成，最后通过 Art-Net 协议直接控制灯光设备。 从一张图片到一">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://learn.hykpromax.top/defaultpic/default9%20.webp">
+<meta property="article:published_time" content="2025-11-27T04:53:28.000Z">
+<meta property="article:modified_time" content="2025-11-27T04:53:28.000Z">
+<meta property="article:author" content="HYK">
+<meta property="article:tag" content="Android">
+<meta property="article:tag" content="Art-Net">
+<meta property="article:tag" content="Jetpack Compose">
+<meta property="article:tag" content="Kotlin">
+<meta property="article:tag" content="图像处理">
+<meta property="article:tag" content="物联网">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://learn.hykpromax.top/defaultpic/default9%20.webp"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制",
+  "url": "https://learn.hykpromax.top/2025/11/27/ambient-car-light-artnet-android/",
+  "image": "https://learn.hykpromax.top/defaultpic/default9%20.webp",
+  "datePublished": "2025-11-27T04:53:28.000Z",
+  "dateModified": "2025-11-27T04:53:28.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "HYK",
+      "url": "https://learn.hykpromax.top"
+    }
+  ]
+}</script><link rel="shortcut icon" href="https://s2.loli.net/2022/12/08/SkKbjJ7g9uHvtXh.png"><link rel="canonical" href="https://learn.hykpromax.top/2025/11/27/ambient-car-light-artnet-android/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.5"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.2.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"pagination":{"enable":false,"hitsPerPage":8},"languages":{"hits_empty":"未找到符合您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"简"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'medium_zoom',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css" media="defer" onload="this.media='all'"><link rel="stylesheet" href="/css/runtime.css" media="print" onload="this.media='all'"><meta name="generator" content="Hexo 8.1.2"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(https://s2.loli.net/2022/12/08/rc6EaYs2kgwXHVZ.webp);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">37</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">85</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/defaultpic/default9%20.webp);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Study-HYK</span></a><a class="nav-page-title" href="/"><span class="site-name">AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div id="search-button"><span class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></span></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">AmbientCarLight：从图片取色到 Art-Net 车载氛围灯控制</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-11-27T04:53:28.000Z" title="发表于 2025-11-27 12:53:28">2025-11-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-11-27T04:53:28.000Z" title="更新于 2025-11-27 12:53:28">2025-11-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E9%A1%B9%E7%9B%AE%E5%A4%8D%E7%9B%98/">项目复盘</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">总字数:</span><span class="word-count">1.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>4分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>本科阶段做车辆氛围灯项目时，我想解决的不是“在手机上选一个颜色”，而是让灯光能跟着用户喜欢的画面变化。用户可以从相册、相机或系统壁纸中选图，应用提取其中的主色，再把这些颜色分配到车内 LED 灯带上。</p>
+<p>我把它做成了一套 Android 应用：Kotlin 负责业务逻辑，Jetpack Compose 负责界面，颜色提取在手机本地完成，最后通过 Art-Net 协议直接控制灯光设备。</p>
+<h2 id="从一张图片到一条灯带"><a href="#从一张图片到一条灯带" class="headerlink" title="从一张图片到一条灯带"></a>从一张图片到一条灯带</h2><p>整个流程可以概括为：</p>
+<pre><code class="highlight mermaid">flowchart LR
+    A[&quot;相册 / 相机 / 系统壁纸&quot;] --&gt; B[&quot;图片缩放与取色&quot;]
+    B --&gt; C[&quot;Palette 或 K-Means&quot;]
+    C --&gt; D[&quot;亮度、饱和度与互补色处理&quot;]
+    D --&gt; E[&quot;LED 颜色插值&quot;]
+    E --&gt; F[&quot;Art-Net DMX 数据包&quot;]
+    F --&gt; G[&quot;车内 LED 控制器&quot;]</code></pre>
+
+<p>图片输入有三种。相册适合提前准备主题图，相机可以现场拍摄，系统壁纸则让灯光自动延续手机当前的视觉风格。图片加载后先缩小尺寸，避免直接在原图上做聚类拖慢界面。</p>
+<p>我提供了两套取色方法。第一套使用 Android Palette，从图片色块中筛掉过暗、饱和度过低的颜色，再按出现频率选择主色。如果画面接近单色，还可以补一组互补色，让灯带不至于全部挤在一个色相里。</p>
+<p>第二套是 K-Means。图片会先降采样到大约 <code>100 x 100</code>，像素转换成 RGB 点，再进行有限轮次的聚类。这里不追求图像分析上的极致精度，目标是在手机上快速得到肉眼合理的几组颜色。用户可以在设置中切换算法，也可以调整颜色数量、最低亮度和最低饱和度。</p>
+<h2 id="Android-端怎样组织状态"><a href="#Android-端怎样组织状态" class="headerlink" title="Android 端怎样组织状态"></a>Android 端怎样组织状态</h2><p>应用采用 MVVM。Compose 页面负责展示和交互，<code>AmbientLightViewModel</code> 维护图片、提取结果、连接状态和全部设置，<code>SettingsRepository</code> 通过 DataStore 保存语言、算法、LED 数量、阈值和 Art-Net 地址。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Compose Screens</span><br><span class="line">      ↓</span><br><span class="line">AmbientLightViewModel + StateFlow</span><br><span class="line">      ↓</span><br><span class="line">Color Extractors / SettingsRepository / ArtNetController</span><br></pre></td></tr></table></figure>
+
+<p>这样做有一个直接好处：设置页修改算法或阈值后，ViewModel 可以重新计算当前图片，而不需要页面自己保存一份颜色状态。相机、相册和壁纸最后也都进入同一个 <code>onImageSelected</code> 流程。</p>
+<p>界面使用 Jetpack Compose 和 Material 3，主页面包含图片预览、提取色板、LED 渐变预览、图库、相机和壁纸入口。设置页处理中文&#x2F;英文、算法、颜色数量、过滤阈值、LED 数量以及目标设备 IP。保存设置时统一提交，避免拖动多个滑块时持续写入 DataStore 和重复计算。</p>
+<h2 id="Art-Net-控制不是普通网络请求"><a href="#Art-Net-控制不是普通网络请求" class="headerlink" title="Art-Net 控制不是普通网络请求"></a>Art-Net 控制不是普通网络请求</h2><p>取出几种颜色后，我按 LED 在灯带上的位置做分段插值，把离散色板变成连续渐变。每颗 RGB 灯占三个 DMX 通道，数据再封装成 ArtDmx UDP 包发送到端口 <code>6454</code>。</p>
+<p><code>ArtNetController</code> 会预先写好固定包头并复用缓冲区，序列号在 <code>1-255</code> 之间循环。DMX 数据长度需要是偶数，长度字段使用大端序；Art-Net 操作码本身又是小端序。这些细节如果写错，手机端看起来发送成功，控制器却不会响应。</p>
+<p>为了避免每次状态变化都创建 Socket 或堆积 UDP 包，我让 DatagramSocket 在连接期间复用，并把更新频率限制在约 30 FPS。新颜色到来时可以取消尚未执行的更新，只发送较新的结果。对于氛围灯来说，这个速度已经足够平滑。</p>
+<h2 id="我在实现中遇到的边界"><a href="#我在实现中遇到的边界" class="headerlink" title="我在实现中遇到的边界"></a>我在实现中遇到的边界</h2><p>Android 权限和硬件协议是这个项目里最容易被忽略的两部分。相机需要运行时权限和 FileProvider，读取系统壁纸在不同 Android 版本上也有兼容差异。网络连通只说明 UDP Socket 可用，不代表 Art-Net 设备真的接收了灯光数据，因此连接状态还需要更明确的设备反馈。</p>
+<p>另一个限制来自单个 DMX Universe。一个 Universe 最多 512 个通道，而 RGB 灯每颗占三个通道，所以单 Universe 实际只能完整容纳 170 颗 RGB 灯。应用设置允许更大的 LED 数量，后续应该在输入端限制，或者增加多 Universe 分包，不能只扩大数组。</p>
+<p>测试方面，我为颜色提取、设置存储和 Art-Net 控制准备了基础用例，但真实灯光效果仍然需要在不同图片、不同灯珠数量和实际控制器上做集成测试。UDP 无连接的特性决定了“函数没有抛异常”并不等于硬件工作正常。</p>
+<h2 id="回头看这个项目"><a href="#回头看这个项目" class="headerlink" title="回头看这个项目"></a>回头看这个项目</h2><p>AmbientCarLight 把 Android、图像处理和硬件控制连到了一起。它不是单纯的取色 Demo：图片输入、算法选择、状态持久化、灯带插值和 Art-Net 发包都在同一条用户流程里。</p>
+<p>这次实现让我更熟悉 Compose 的状态组织，也第一次认真处理实时灯光协议里的包结构、更新频率和硬件边界。以后再做类似项目，我会更早加入设备发现、Universe 配置和真实回执，把“能发数据”推进到“能确认整套设备正在按预期运行”。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top">HYK</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://learn.hykpromax.top/2025/11/27/ambient-car-light-artnet-android/">https://learn.hykpromax.top/2025/11/27/ambient-car-light-artnet-android/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://learn.hykpromax.top" target="_blank">Study-HYK</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/defaultpic/default9%20.webp" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/01/27/ai-psyc-project-fullstack-notes/" title="AI_Psyc_Project：用实时多模态对话完成心理测评"><img class="cover" src="/defaultpic/default7.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post" loading='lazy'><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">AI_Psyc_Project：用实时多模态对话完成心理测评</div></div><div class="info-2"><div class="info-item-1">AI_Psyc_Project 是一个私有 Fork 项目。上游提供了最初的项目基础，我参与了当前应用的整体构建设计，并继续完成本地模型、实时会话、认证、进度和报告等部分的整合。 如果只把它理解成一个带语音输入的聊天网页，会漏掉这个项目真正想做的事。产品体验上，我希望它接近 GPT Live 或豆包电话：用户不用对着一张问卷逐项选择，而是通过连续的语音和视频对话完成心理测评。系统既要听懂说了什么，也要结合画面、语气和上下文决定下一轮怎么问，最后把整段会话整理成结构化结果。 这里不展开业务数据、测评量表、私有提示词和模型配置，只记录我怎样把多模态模型做成一套可以运行的应用。 从聊天框改成一次完整的测评会话普通聊天应用只需要维护消息列表。实时心理测评还要处理麦克风、摄像头、语音播放、测评轮次、进度和报告状态。用户可能打断模型，也可能在模型说话时继续输入；网络中断后，页面不能把已经完成的轮次当成没发生过。 我把一次测评看成一条连续的数据链路： flowchart LR     A[&quot;浏览器：语音、视频与文字&quot;] &lt;--&gt; B[&quot;Next.js ...</div></div></div></a><a class="pagination-related" href="/2025/11/23/space-simulation-automation-pipeline/" title="航天干扰仿真自动化：从参数录入、截图识别到报告生成"><img class="cover" src="/defaultpic/default11.webp" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post" loading='lazy'><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">航天干扰仿真自动化：从参数录入、截图识别到报告生成</div></div><div class="info-2"><div class="info-item-1">这套航天仿真自动化程序，是我本科阶段写过体量最大的一组桌面自动化脚本。原来的工作需要从 Word 里找轨道、频段、地球站和链路参数，再逐项填进 Visualyse，等待仿真完成后截图、抄数、画图，最后把结果放进固定格式的报告。 单次操作并不难，难的是对象一多，重复点击和复制就会占掉大量时间，而且任何一处填错都会传到最终报告。我没有把它写成一个几千行的单体脚本，而是拆成参数整理、软件填写、结果截图、OCR、绘图和报告生成几组工具。 整条流水线flowchart TD     A[&quot;原始 Word 参数文档&quot;] --&gt; B[&quot;结构解析与分单元整理&quot;]     B --&gt; C[&quot;轨道 / 频段 / 地球站 / 链路 Excel&quot;]     C --&gt; D[&quot;Visualyse GUI 自动填写&quot;]     D --&gt; E[&quot;运行仿真并批量截图&quot;]     E --&gt; F[&quot;PaddleOCR 提取最坏值与时长&quot;]     D --&gt;...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="https://s2.loli.net/2022/12/07/LkxSbOU5V8dDC4h.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/ loading='lazy'></div><div class="author-info-name">HYK</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">37</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">85</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/HYK-X" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="https://space.bilibili.com/161889615" target="_blank" title="BiliBili"><i class="fab fa-bilibili"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">爱人工智能，爱欣然，爱猫羽雫</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8E%E4%B8%80%E5%BC%A0%E5%9B%BE%E7%89%87%E5%88%B0%E4%B8%80%E6%9D%A1%E7%81%AF%E5%B8%A6"><span class="toc-number">1.</span> <span class="toc-text">从一张图片到一条灯带</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Android-%E7%AB%AF%E6%80%8E%E6%A0%B7%E7%BB%84%E7%BB%87%E7%8A%B6%E6%80%81"><span class="toc-number">2.</span> <span class="toc-text">Android 端怎样组织状态</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Art-Net-%E6%8E%A7%E5%88%B6%E4%B8%8D%E6%98%AF%E6%99%AE%E9%80%9A%E7%BD%91%E7%BB%9C%E8%AF%B7%E6%B1%82"><span class="toc-number">3.</span> <span class="toc-text">Art-Net 控制不是普通网络请求</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%88%91%E5%9C%A8%E5%AE%9E%E7%8E%B0%E4%B8%AD%E9%81%87%E5%88%B0%E7%9A%84%E8%BE%B9%E7%95%8C"><span class="toc-number">4.</span> <span class="toc-text">我在实现中遇到的边界</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9E%E5%A4%B4%E7%9C%8B%E8%BF%99%E4%B8%AA%E9%A1%B9%E7%9B%AE"><span class="toc-number">5.</span> <span class="toc-text">回头看这个项目</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的"><img src="/defaultpic/default11.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Hexo 本地源码丢了以后，我是怎么把博客救回来的"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/08/06/restore-lost-hexo-source/" title="Hexo 本地源码丢了以后，我是怎么把博客救回来的">Hexo 本地源码丢了以后，我是怎么把博客救回来的</a><time datetime="2026-08-06T10:10:00.000Z" title="发表于 2026-08-06 18:10:00">2026-08-06</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/08/westlake-spatial-speech-enhancement-roadmap/" title="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线"><img src="/defaultpic/default5.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/07/08/westlake-spatial-speech-enhancement-roadmap/" title="从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线">从子带 LSTM 到 SpatialNet：西湖大学多通道语音增强路线</a><time datetime="2026-07-08T08:37:48.000Z" title="发表于 2026-07-08 16:37:48">2026-07-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/08/speech-enhancement-foundations/" title="语音增强基础：从鸡尾酒问题到多通道空间滤波"><img src="/defaultpic/default7.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="语音增强基础：从鸡尾酒问题到多通道空间滤波"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/07/08/speech-enhancement-foundations/" title="语音增强基础：从鸡尾酒问题到多通道空间滤波">语音增强基础：从鸡尾酒问题到多通道空间滤波</a><time datetime="2026-07-08T08:34:56.000Z" title="发表于 2026-07-08 16:34:56">2026-07-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/07/08/speech-foundations/" title="语音基础：从采样到 STFT"><img src="/defaultpic/default9%20.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="语音基础：从采样到 STFT"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/07/08/speech-foundations/" title="语音基础：从采样到 STFT">语音基础：从采样到 STFT</a><time datetime="2026-07-08T07:09:17.000Z" title="发表于 2026-07-08 15:09:17">2026-07-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/06/07/mathtype-no-equations-found-fix/" title="MathType 提示“没有公式被发现”：一次 OMML2MML.XSL 排错记录"><img src="/defaultpic/default11.webp" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="MathType 提示“没有公式被发现”：一次 OMML2MML.XSL 排错记录"/ loading='lazy'></a><div class="content"><a class="title" href="/2026/06/07/mathtype-no-equations-found-fix/" title="MathType 提示“没有公式被发现”：一次 OMML2MML.XSL 排错记录">MathType 提示“没有公式被发现”：一次 OMML2MML.XSL 排错记录</a><time datetime="2026-06-07T04:00:00.000Z" title="发表于 2026-06-07 12:00:00">2026-06-07</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2022 - 2026 By HYK</span></div><div class="footer_custom_text"><div id="workboard"></div>
+<p id="ghbdages">
+  <a class="github-badge" target="_blank" href="https://hexo.io/" style="margin-inline:5px" data-title="博客框架为Hexo_v8.1.2" title=""><img src="https://img.shields.io/badge/Frame-Hexo-blue?style=flat&logo=hexo" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://butterfly.js.org/" style="margin-inline:5px" data-title="主题版本Butterfly_v5.5.5" title=""><img src="https://img.shields.io/badge/Theme-Butterfly-6513df?style=flat&logo=bitdefender" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://vercel.com/" style="margin-inline:5px" data-title="本站采用多线部署，主线路托管于Vercel" title=""><img src="https://img.shields.io/badge/Hosted-Vercel-brightgreen?style=flat&logo=Vercel" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://dashboard.4everland.org/" style="margin-inline:5px" data-title="本站采用多线部署，备用线路托管于4EVERLAND" title=""><img src="https://img.shields.io/badge/Hosted-4EVERLAND-22DDDD?style=flat&logo=IPFS" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="https://github.com/" style="margin-inline:5px" data-title="本站项目由Github托管" title=""><img src="https://img.shields.io/badge/Source-Github-d021d6?style=flat&logo=GitHub" alt="" loading='lazy'></a>
+  <a class="github-badge" target="_blank" href="http://creativecommons.org/licenses/by-nc-sa/4.0/" style="margin-inline:5px" data-title="本站采用知识共享署名-非商业性使用-相同方式共享4.0国际许可协议进行许可" title=""><img src="https://img.shields.io/badge/Copyright-BY--NC--SA%204.0-d42328?style=flat&logo=Claris" alt="" loading='lazy'></a>
+</p>
+</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">简</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.5"></script><script src="/js/main.js?v=5.5.5"></script><script src="/js/tw_cn.js?v=5.5.5"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script><div class="js-pjax"><script>(async () => {
+  const showKatex = () => {
+    document.querySelectorAll('#article-container .katex').forEach(el => el.classList.add('katex-show'))
+  }
+
+  if (!window.katex_js_css) {
+    window.katex_js_css = true
+    await btf.getCSS('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css')
+    if (true) {
+      await btf.getScript('https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/copy-tex.min.js')
+    }
+  }
+
+  showKatex()
+})()</script><script>(() => {
+  const parseViewBox = viewBox => {
+    if (!viewBox) return null
+    const parts = viewBox.trim().split(/[\s,]+/).map(n => Number(n))
+    if (parts.length !== 4 || parts.some(n => Number.isNaN(n))) return null
+    return parts
+  }
+
+  const getSvgViewBox = svg => {
+    const attr = parseViewBox(svg.getAttribute('viewBox'))
+    if (attr) return attr
+
+    // Fallback: use bbox to build a viewBox
+    try {
+      const bbox = svg.getBBox()
+      if (bbox && bbox.width && bbox.height) return [bbox.x, bbox.y, bbox.width, bbox.height]
+    } catch (e) {
+      // getBBox may fail on some edge cases; ignore
+    }
+
+    const w = Number(svg.getAttribute('width')) || 0
+    const h = Number(svg.getAttribute('height')) || 0
+    if (w > 0 && h > 0) return [0, 0, w, h]
+    return [0, 0, 100, 100]
+  }
+
+  const setSvgViewBox = (svg, vb) => {
+    svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${vb[2]} ${vb[3]}`)
+  }
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v))
+
+  const openSvgInNewTab = ({ source, initViewBox }) => {
+    const getClonedSvg = () => {
+      if (typeof source === 'string') {
+        const template = document.createElement('template')
+        template.innerHTML = source.trim()
+        const svg = template.content.querySelector('svg')
+        return svg ? svg.cloneNode(true) : null
+      }
+      if (source && typeof source.cloneNode === 'function') {
+        return source.cloneNode(true)
+      }
+      return null
+    }
+
+    const clone = getClonedSvg()
+    if (!clone) return
+    if (initViewBox && initViewBox.length === 4) {
+      clone.setAttribute('viewBox', initViewBox.join(' '))
+    }
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    if (!clone.getAttribute('xmlns:xlink') && clone.outerHTML.includes('xlink:')) {
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+    }
+    // inject background to match current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+    const bg = getComputedStyle(document.body).backgroundColor || (isDark ? '#1e1e1e' : '#ffffff')
+    if (!clone.style.background) clone.style.background = bg
+
+    const serializer = new XMLSerializer()
+    const svgSource = serializer.serializeToString(clone)
+    const htmlSource = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        html, body { width: 100%; height: 100%; margin: 0; display: flex; align-items: center; justify-content: center; background: ${bg}; }
+        svg { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+      </style>
+      </head><body>${svgSource}</body></html>`
+    const blob = new Blob([htmlSource], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'noopener')
+    setTimeout(() => URL.revokeObjectURL(url), 30000)
+  }
+
+  const attachMermaidViewerButton = wrap => {
+    let btn = wrap.querySelector('.mermaid-open-btn')
+    if (!btn) {
+      btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'mermaid-open-btn'
+      wrap.appendChild(btn)
+    }
+
+    btn.innerHTML = '<i class="fa fa-search fa-fw" aria-hidden="true"></i>'
+
+    if (!btn.__mermaidViewerBound) {
+      btn.addEventListener('click', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const svg = wrap.__mermaidOriginalSvg || wrap.querySelector('svg')
+        if (!svg) return
+        const initViewBox = wrap.__mermaidInitViewBox
+        if (typeof svg === 'string') {
+          openSvgInNewTab({ source: svg, initViewBox })
+          return
+        }
+        openSvgInNewTab({ source: svg, initViewBox })
+      })
+      btn.__mermaidViewerBound = true
+    }
+  }
+
+  // Zoom around a point (px, py) in the SVG viewport (in viewBox coordinates)
+  const zoomAtPoint = (vb, factor, px, py) => {
+    const w = vb[2] * factor
+    const h = vb[3] * factor
+    const nx = px - (px - vb[0]) * factor
+    const ny = py - (py - vb[1]) * factor
+    return [nx, ny, w, h]
+  }
+
+  const initMermaidGestures = wrap => {
+    const svg = wrap.querySelector('svg')
+    if (!svg) return
+
+    // Ensure viewBox exists so gestures always work
+    const initVb = getSvgViewBox(svg)
+    wrap.__mermaidInitViewBox = initVb
+    wrap.__mermaidCurViewBox = initVb.slice()
+    setSvgViewBox(svg, initVb)
+
+    // Avoid binding multiple times on themeChange/pjax
+    if (wrap.__mermaidGestureBound) return
+    wrap.__mermaidGestureBound = true
+
+    // Helper: map client (viewport) coordinate -> viewBox coordinate
+    const clientToViewBox = (clientX, clientY) => {
+      const rect = svg.getBoundingClientRect()
+      const vb = wrap.__mermaidCurViewBox || getSvgViewBox(svg)
+      const x = vb[0] + (clientX - rect.left) * (vb[2] / rect.width)
+      const y = vb[1] + (clientY - rect.top) * (vb[3] / rect.height)
+      return { x, y, rect, vb }
+    }
+
+    const state = {
+      pointers: new Map(),
+      startVb: null,
+      startDist: 0,
+      startCenter: null
+    }
+
+    const clampVb = vb => {
+      const init = wrap.__mermaidInitViewBox || vb
+      const minW = init[2] * 0.1
+      const maxW = init[2] * 10
+      const minH = init[3] * 0.1
+      const maxH = init[3] * 10
+      vb[2] = clamp(vb[2], minW, maxW)
+      vb[3] = clamp(vb[3], minH, maxH)
+      return vb
+    }
+
+    const setCurVb = vb => {
+      vb = clampVb(vb)
+      wrap.__mermaidCurViewBox = vb
+      setSvgViewBox(svg, vb)
+    }
+
+    const onPointerDown = e => {
+      // Allow only primary button for mouse
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      svg.setPointerCapture(e.pointerId)
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      if (state.pointers.size === 1) {
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      } else if (state.pointers.size === 2) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        state.startDist = Math.hypot(dx, dy)
+        state.startVb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        state.startCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      }
+    }
+
+    const onPointerMove = e => {
+      if (!state.pointers.has(e.pointerId)) return
+      state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      // Pan with 1 pointer
+      if (state.pointers.size === 1 && state.startVb) {
+        const p = [...state.pointers.values()][0]
+        const prev = { x: e.clientX - e.movementX, y: e.clientY - e.movementY }
+        // movementX/Y unreliable on touch, compute from stored last position
+        const last = wrap.__mermaidLastSinglePointer || p
+        const dxClient = p.x - last.x
+        const dyClient = p.y - last.y
+        wrap.__mermaidLastSinglePointer = p
+
+        const { rect } = clientToViewBox(p.x, p.y)
+        const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+        const dx = dxClient * (vb[2] / rect.width)
+        const dy = dyClient * (vb[3] / rect.height)
+        setCurVb([vb[0] - dx, vb[1] - dy, vb[2], vb[3]])
+        return
+      }
+
+      // Pinch zoom with 2 pointers
+      if (state.pointers.size === 2 && state.startVb && state.startDist > 0) {
+        const pts = [...state.pointers.values()]
+        const dx = pts[0].x - pts[1].x
+        const dy = pts[0].y - pts[1].y
+        const dist = Math.hypot(dx, dy)
+        if (!dist) return
+        const factor = state.startDist / dist // dist bigger => zoom in (viewBox smaller)
+
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        const centerClient = { x: cx, y: cy }
+
+        const pxy = clientToViewBox(centerClient.x, centerClient.y)
+        const cpx = pxy.x
+        const cpy = pxy.y
+
+        const vb = zoomAtPoint(state.startVb, factor, cpx, cpy)
+        setCurVb(vb)
+      }
+    }
+
+    const onPointerUpOrCancel = e => {
+      state.pointers.delete(e.pointerId)
+      if (state.pointers.size === 0) {
+        state.startVb = null
+        state.startDist = 0
+        state.startCenter = null
+        wrap.__mermaidLastSinglePointer = null
+      } else if (state.pointers.size === 1) {
+        // reset single pointer baseline to avoid jump
+        wrap.__mermaidLastSinglePointer = [...state.pointers.values()][0]
+      }
+    }
+
+    // Wheel zoom (mouse/trackpad)
+    const onWheel = e => {
+      // ctrlKey on mac trackpad pinch; we treat both as zoom
+      e.preventDefault()
+      const delta = e.deltaY
+      const zoomFactor = delta > 0 ? 1.1 : 0.9
+      const { x, y } = clientToViewBox(e.clientX, e.clientY)
+      const vb = (wrap.__mermaidCurViewBox || getSvgViewBox(svg)).slice()
+      setCurVb(zoomAtPoint(vb, zoomFactor, x, y))
+    }
+
+    const onDblClick = () => {
+      const init = wrap.__mermaidInitViewBox
+      if (!init) return
+      wrap.__mermaidCurViewBox = init.slice()
+      setSvgViewBox(svg, init)
+    }
+
+    svg.addEventListener('pointerdown', onPointerDown)
+    svg.addEventListener('pointermove', onPointerMove)
+    svg.addEventListener('pointerup', onPointerUpOrCancel)
+    svg.addEventListener('pointercancel', onPointerUpOrCancel)
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    svg.addEventListener('dblclick', onDblClick)
+  }
+
+  const runMermaid = ele => {
+    window.loadMermaid = true
+    const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'neutral'
+
+    ele.forEach((item, index) => {
+      const mermaidSrc = item.firstElementChild
+
+      // Clear old render (themeChange/pjax will rerun)
+      const oldSvg = item.querySelector('svg')
+      if (oldSvg) oldSvg.remove()
+      item.__mermaidGestureBound = false
+
+      const config = mermaidSrc.dataset.config ? JSON.parse(mermaidSrc.dataset.config) : {}
+      if (!config.theme) {
+        config.theme = theme
+      }
+      const mermaidThemeConfig = `%%{init: ${JSON.stringify(config)}}%%\n`
+      const mermaidID = `mermaid-${index}`
+      const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+
+      const renderFn = mermaid.render(mermaidID, mermaidDefinition)
+      const renderMermaid = svg => {
+        mermaidSrc.insertAdjacentHTML('afterend', svg)
+        if (true) initMermaidGestures(item)
+        item.__mermaidOriginalSvg = svg
+        if (true) attachMermaidViewerButton(item)
+      }
+
+
+      // mermaid v9 and v10 compatibility
+      typeof renderFn === 'string' ? renderMermaid(renderFn) : renderFn.then(({ svg }) => renderMermaid(svg))
+    })
+  }
+
+  const codeToMermaid = () => {
+    const codeMermaidEle = document.querySelectorAll('pre > code.mermaid')
+    if (codeMermaidEle.length === 0) return
+
+    codeMermaidEle.forEach(ele => {
+      const preEle = document.createElement('pre')
+      preEle.className = 'mermaid-src'
+      preEle.hidden = true
+      preEle.textContent = ele.textContent
+      const newEle = document.createElement('div')
+      newEle.className = 'mermaid-wrap'
+      newEle.appendChild(preEle)
+      ele.parentNode.replaceWith(newEle)
+    })
+  }
+
+  const loadMermaid = () => {
+    if (false) codeToMermaid()
+    const $mermaid = document.querySelectorAll('#article-container .mermaid-wrap')
+    if ($mermaid.length === 0) return
+
+    const runMermaidFn = () => runMermaid($mermaid)
+    btf.addGlobalFn('themeChange', runMermaidFn, 'mermaid')
+    window.loadMermaid ? runMermaidFn() : btf.getScript('https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.min.js').then(runMermaidFn)
+  }
+
+  btf.addGlobalFn('encrypt', loadMermaid, 'mermaid')
+  window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+})()</script></div><script async src="/js/runtime.js"></script><script async src="/js/hitokoto-typed.js"></script><script id="canvas_nest" defer="defer" color="0,0,255" opacity="0.7" zIndex="-1" count="30" mobile="false" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/dist/canvas-nest.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><i class="fas fa-spinner fa-pulse" id="loading-status" hidden="hidden"></i><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="text-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据加载中</span></div><div class="local-search-input"><input placeholder="搜索文章" type="text"/></div><hr/><div id="local-search-results"></div><div class="ais-Pagination" id="local-search-pagination" style="display:none;"><ul class="ais-Pagination-list"></ul></div><div id="local-search-stats"></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=5.5.5"></script></div></div></body></html>
